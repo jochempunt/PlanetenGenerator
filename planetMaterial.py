@@ -27,15 +27,42 @@ earthNoise.inputs[4].default_value= 5.7
 
 earthyColorRamp: nodeType = nodes.new("ShaderNodeValToRGB")
 
-earthyColorRamp.color_ramp.elements[0].position = 0.4
+#testnode: bpy.types.ColorRamp.elements.new()
+
+earthyColorRamp.color_ramp.elements[0].position = 0.433
 earthyColorRamp.color_ramp.elements[1].position = 0.7
+earthyColorRamp.color_ramp.elements.new(0.6)
+#die position des elements ist die wie weit es links ist 
+
+earthyColorRamp.color_ramp.elements[0].color = (0.017,0.1,0.026,1)
+earthyColorRamp.color_ramp.elements[1].color = (0.4,0.129,0.056,1)
+earthyColorRamp.color_ramp.elements[2].color = (0.23,0.060,0.016,1)
+# colors in RGBA format
 
 
+
+#continent/earth color
 mat_planet.node_tree.links.new(textureCoordinates.outputs[3],earthNoise.inputs[0])
-
-
 mat_planet.node_tree.links.new(earthNoise.outputs[0],earthyColorRamp.inputs[0])
-
 mat_planet.node_tree.links.new(earthyColorRamp.outputs[0],continentBSDF.inputs[0])
+
+#continent Bumps
+continentBumpNoise:nodeType = nodes.new("ShaderNodeTexNoise")
+mat_planet.node_tree.links.new(textureCoordinates.outputs[3],continentBumpNoise.inputs[0])
+
+continentBumpNoise.inputs[2].default_value= 50.0
+continentBumpNoise.inputs[3].default_value= 16.0
+continentBumpNoise.inputs[4].default_value= 5.7
+
+
+
+
+bumpNode: nodeType = nodes.new("ShaderNodeBump")
+bumpNode.inputs[0].default_value = 0.095
+
+mat_planet.node_tree.links.new(continentBumpNoise.outputs[0], bumpNode.inputs[2])
+mat_planet.node_tree.links.new(bumpNode.outputs[0], continentBSDF.inputs[22])
+
+
 
 ball.data.materials.append(mat_planet)
