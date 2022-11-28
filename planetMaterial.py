@@ -63,6 +63,11 @@ bumpNode.inputs[0].default_value = 0.095
 mat_planet.node_tree.links.new(continentBumpNoise.outputs[0], bumpNode.inputs[2])
 mat_planet.node_tree.links.new(bumpNode.outputs[0], continentBSDF.inputs[22])
 
-
+#Todo Ozeane Wolken & Atmosphäre
+# Einstellbare Parameter / UI
+#Gasplanet & Ringe
+#Mond
+#Sterne?
+#Laufzeit??
 
 ball.data.materials.append(mat_planet)
