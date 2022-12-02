@@ -1,0 +1,201 @@
+import bpy
+import typing
+from mathutils import *
+D = bpy.data
+C = bpy.context
+
+nodeType = bpy.types.Node;
+
+#create sphere
+bpy.ops.mesh.primitive_uv_sphere_add(radius =1, enter_editmode=False, align='WORLD', location=(0, 0, 0), scale=(1, 1, 1))
+
+ball = C.object
+
+
+earthNoiseScale = 2.6
+earthNoiseDetail = 16.0
+earthNoiseRoughness = 5.7
+earthColor1 = (0.017,0.1,0.026,1)
+earthColor2 =  (0.4,0.129,0.056,1)
+earthColor3 = (0.23,0.060,0.016,1)
+
+planetBumpyness = 0.095
+
+continentsScaleX = 0.6
+continentsScaleY = 1.0
+continentsScaleZ = 1.0
+amountOfContinents = 0.7
+continentDivision = 0.57
+continentHeight = 0.4
+
+oceanColor1 = (0.009,0.019,0.122,1)
+oceanColor2 = (0.047,0.136,0.384,1)
+shoreSize = 0.06 # 0.0 is biggest
+wavyness = 0.045
+
+atmosphereAlpha = 0.5
+atmoshereSize =0.050
+atmosphereColor =(0.050,0.279,1.0,1)
+
+bpy.ops.object.modifier_add(type='SUBSURF')
+bpy.context.object.modifiers["Subdivision"].levels = 3
+#planet material generation
+mat_planet: bpy.types.Material = bpy.data.materials.new("Planet Material")
+mat_planet.use_nodes = True
+nodes: typing.List[bpy.types.Nodes] = mat_planet.node_tree.nodes
+continentBSDF: nodeType = nodes["Principled BSDF"]
+
+textureCoordinates: nodeType = nodes.new("ShaderNodeTexCoord")
+earthNoise:nodeType = nodes.new("ShaderNodeTexNoise")
+
+
+earthNoise.inputs[2].default_value= earthNoiseScale
+earthNoise.inputs[3].default_value= earthNoiseDetail
+earthNoise.inputs[4].default_value= earthNoiseRoughness
+
+earthyColorRamp: nodeType = nodes.new("ShaderNodeValToRGB")
+
+#testnode: bpy.types.ColorRamp.elements.new()
+
+earthyColorRamp.color_ramp.elements[0].position = 0.433
+earthyColorRamp.color_ramp.elements[1].position = 0.7
+earthyColorRamp.color_ramp.elements.new(0.6)
+#die position des elements ist die wie weit es links ist 
+
+earthyColorRamp.color_ramp.elements[0].color = earthColor1
+earthyColorRamp.color_ramp.elements[1].color = earthColor2
+earthyColorRamp.color_ramp.elements[2].color = earthColor3
+# colors in RGBA format
+
+#continent/earth color
+mat_planet.node_tree.links.new(textureCoordinates.outputs[3],earthNoise.inputs[0])
+mat_planet.node_tree.links.new(earthNoise.outputs[0],earthyColorRamp.inputs[0])
+mat_planet.node_tree.links.new(earthyColorRamp.outputs[0],continentBSDF.inputs[0])
+
+#continent Bumps
+planetBumpNoise:nodeType = nodes.new("ShaderNodeTexNoise")
+
+planetBumpNoise.inputs[2].default_value= 50.0
+planetBumpNoise.inputs[3].default_value= 16.0
+planetBumpNoise.inputs[4].default_value= 5.7
+planetBumpNoise.inputs[5].default_value= 0.2
+
+mat_planet.node_tree.links.new(textureCoordinates.outputs[3],planetBumpNoise.inputs[0])
+
+
+bumpNode: nodeType = nodes.new("ShaderNodeBump")
+bumpNode.inputs[0].default_value = planetBumpyness
+mat_planet.node_tree.links.new(planetBumpNoise.outputs[0], bumpNode.inputs[2])
+
+
+#Continents
+continentMapping: nodeType = nodes.new("ShaderNodeMapping");
+mat_planet.node_tree.links.new(textureCoordinates.outputs[3],continentMapping.inputs[0])
+
+
+
+continentMapping.inputs[3].default_value[0] = continentsScaleX
+continentMapping.inputs[3].default_value[1] = continentsScaleY
+continentMapping.inputs[3].default_value[2] = continentsScaleZ
+
+continentNoise: nodeType = nodes.new("ShaderNodeTexNoise");
+mat_planet.node_tree.links.new(continentMapping.outputs[0],continentNoise.inputs[0])
+
+continentNoise.inputs[2].default_value= amountOfContinents
+continentNoise.inputs[3].default_value= 15.6
+continentNoise.inputs[4].default_value= continentDivision
+continentNoise.inputs[5].default_value= 0.2
+
+continentMaskColorRamp: nodeType = nodes.new("ShaderNodeValToRGB")
+
+mat_planet.node_tree.links.new(continentNoise.outputs[0],continentMaskColorRamp.inputs[0])
+
+continentMaskColorRamp.color_ramp.elements[0].position = 0.545
+continentMaskColorRamp.color_ramp.elements[1].position = 0.561
+
+continentBumpNode:nodeType = nodes.new("ShaderNodeBump")
+
+continentBumpNode.inputs[0].default_value = continentHeight
+mat_planet.node_tree.links.new(continentMaskColorRamp.outputs[0], continentBumpNode.inputs[2])
+
+
+mat_planet.node_tree.links.new(bumpNode.outputs[0], continentBumpNode.inputs[1])
+mat_planet.node_tree.links.new(continentBumpNode.outputs[0], continentBSDF.inputs[20])
+
+
+#Ozean
+oceanColorRamp: nodeType = nodes.new("ShaderNodeValToRGB")
+mat_planet.node_tree.links.new(continentNoise.outputs[0],oceanColorRamp.inputs[0])
+
+oceanColorRamp.color_ramp.elements[0].position = 0.525
+# distance beteweem these elements is the size of the "shore/beaches"
+oceanColorRamp.color_ramp.elements[1].position = oceanColorRamp.color_ramp.elements[0].position + shoreSize
+
+
+
+oceanColorRamp.color_ramp.elements[0].color = oceanColor1
+oceanColorRamp.color_ramp.elements[1].color = oceanColor2
+
+oceanBSDF: nodeType = nodes.new("ShaderNodeBsdfPrincipled")
+mat_planet.node_tree.links.new(oceanColorRamp.outputs[0],oceanBSDF.inputs[0])
+##metalic
+oceanBSDF.inputs[4].default_value = 0.355
+##roughness
+oceanBSDF.inputs[7].default_value = 0.595
+
+#textureCoordinates
+
+#Waves for the ocean
+wavesNoise: nodeType = nodes.new("ShaderNodeTexNoise")
+wavesNoise.inputs[2].default_value= 70.0
+wavesNoise.inputs[3].default_value= 15.0
+wavesNoise.inputs[4].default_value= 0.40
+wavesNoise.inputs[5].default_value= 0.0
+mat_planet.node_tree.links.new(textureCoordinates.outputs[3],wavesNoise.inputs[0])
+
+wavesBumps: nodeType  = nodes.new("ShaderNodeBump")
+
+wavesBumps.inputs[0].default_value = wavyness
+mat_planet.node_tree.links.new(wavesNoise.outputs[0],wavesBumps.inputs[2])
+mat_planet.node_tree.links.new(wavesBumps.outputs[0],oceanBSDF.inputs[20])
+
+earthOceanMixShader: nodeType = nodes.new("ShaderNodeMixShader")
+mat_planet.node_tree.links.new(continentMaskColorRamp.outputs[0],earthOceanMixShader.inputs[0])
+mat_planet.node_tree.links.new(oceanBSDF.outputs[0],earthOceanMixShader.inputs[1])
+mat_planet.node_tree.links.new(continentBSDF.outputs[0],earthOceanMixShader.inputs[2])
+
+materialOutput: nodeType = nodes["Material Output"]
+
+
+#Atmosphere
+atmoLayerWeight: nodeType = nodes.new("ShaderNodeLayerWeight")
+
+atmoLayerWeight.inputs[0].default_value = atmosphereAlpha
+
+atmoMask: nodeType = nodes.new("ShaderNodeValToRGB")
+mat_planet.node_tree.links.new(atmoLayerWeight.outputs[0],atmoMask.inputs[0])
+
+atmoMask.color_ramp.elements[0].position = atmoshereSize
+atmoMask.color_ramp.elements[1].position = 0.808
+
+atmoBSDF: nodeType = nodes.new("ShaderNodeBsdfPrincipled")
+mat_planet.node_tree.links.new(oceanColorRamp.outputs[0],oceanBSDF.inputs[0])
+
+atmoBSDF.inputs[0].default_value = atmosphereColor # atmosphere color
+
+planetAtmoMixShader: nodeType = nodes.new("ShaderNodeMixShader")
+mat_planet.node_tree.links.new(atmoMask.outputs[0],planetAtmoMixShader.inputs[0])
+mat_planet.node_tree.links.new(earthOceanMixShader.outputs[0],planetAtmoMixShader.inputs[1])
+mat_planet.node_tree.links.new(atmoBSDF.outputs[0],planetAtmoMixShader.inputs[2])
+
+
+
+mat_planet.node_tree.links.new(planetAtmoMixShader.outputs[0],materialOutput.inputs[0])
+#Todo Wolken 
+# Einstellbare Parameter / UI
+#Ringe
+#Mond
+#Sterne?
+#Laufzeit??
+
+ball.data.materials.append(mat_planet)
