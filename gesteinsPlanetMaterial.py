@@ -19,19 +19,24 @@ earthColor1 = (0.017,0.1,0.026,1)
 earthColor2 =  (0.4,0.129,0.056,1)
 earthColor3 = (0.23,0.060,0.016,1)
 
-planetBumpyness = 0.095
+planetBumpyness = 0.2
 
 continentsScaleX = 0.6
 continentsScaleY = 1.0
 continentsScaleZ = 1.0
-amountOfContinents = 0.7
+amountOfContinents = 0.5
 continentDivision = 0.57
-continentHeight = 0.4
+continentHeight = 0.35
 
 oceanColor1 = (0.009,0.019,0.122,1)
 oceanColor2 = (0.047,0.136,0.384,1)
 shoreSize = 0.06 # 0.0 is biggest
-wavyness = 0.045
+wavyness = 0.03
+
+cloudDivision = 4.0
+cloudsize = 0.15
+cloudColor = (0.8,0.8,0.8,0.8)
+
 
 atmosphereAlpha = 0.5
 atmoshereSize =0.050
@@ -77,8 +82,8 @@ planetBumpNoise:nodeType = nodes.new("ShaderNodeTexNoise")
 
 planetBumpNoise.inputs[2].default_value= 50.0
 planetBumpNoise.inputs[3].default_value= 16.0
-planetBumpNoise.inputs[4].default_value= 5.7
-planetBumpNoise.inputs[5].default_value= 0.2
+planetBumpNoise.inputs[4].default_value= 0.572
+planetBumpNoise.inputs[5].default_value= 0
 
 mat_planet.node_tree.links.new(textureCoordinates.outputs[3],planetBumpNoise.inputs[0])
 
@@ -119,7 +124,7 @@ continentBumpNode.inputs[0].default_value = continentHeight
 mat_planet.node_tree.links.new(continentMaskColorRamp.outputs[0], continentBumpNode.inputs[2])
 
 
-mat_planet.node_tree.links.new(bumpNode.outputs[0], continentBumpNode.inputs[1])
+mat_planet.node_tree.links.new(bumpNode.outputs[0], continentBumpNode.inputs[3])
 mat_planet.node_tree.links.new(continentBumpNode.outputs[0], continentBSDF.inputs[20])
 
 
@@ -167,6 +172,72 @@ mat_planet.node_tree.links.new(continentBSDF.outputs[0],earthOceanMixShader.inpu
 materialOutput: nodeType = nodes["Material Output"]
 
 
+#Clouds
+#PuffyClouds
+cloudShapeNoise: nodeType = nodes.new("ShaderNodeTexNoise")
+mat_planet.node_tree.links.new(textureCoordinates.outputs[3],cloudShapeNoise.inputs[0])
+
+cloudShapeNoise.inputs[2].default_value = cloudDivision
+cloudShapeNoise.inputs[3].default_value = 16.0
+cloudShapeNoise.inputs[4].default_value = 0.65
+
+
+cloudShapeMaskRamp: nodeType = nodes.new("ShaderNodeValToRGB")
+mat_planet.node_tree.links.new(cloudShapeNoise.outputs[0],cloudShapeMaskRamp.inputs[0])
+cloudShapeMaskRamp.color_ramp.elements[0].position = 0.36
+
+cloudShapeMaskRamp.color_ramp.elements[1].position = cloudShapeMaskRamp.color_ramp.elements[0].position + cloudsize
+
+
+cloudPatternNoise:nodeType = nodes.new("ShaderNodeTexNoise")
+cloudPatternNoise.inputs[2].default_value = 5.0
+cloudPatternNoise.inputs[3].default_value = 16.0
+cloudPatternNoise.inputs[4].default_value = 0.720
+cloudPatternNoise.inputs[5].default_value = 0.1
+mat_planet.node_tree.links.new(textureCoordinates.outputs[3],cloudPatternNoise.inputs[0])
+
+cloudPatternVoronoi: nodeType = nodes.new("ShaderNodeTexVoronoi")
+cloudPatternVoronoi.inputs[2].default_value = 1.9
+mat_planet.node_tree.links.new(cloudPatternNoise.outputs[0],cloudPatternVoronoi.inputs[0])
+
+cloudMixColor: nodeType = nodes.new("ShaderNodeMixRGB")
+cloudMixColor.inputs[2].default_value = (0,0,0,1)
+mat_planet.node_tree.links.new(cloudPatternVoronoi.outputs[0],cloudMixColor.inputs[1])
+mat_planet.node_tree.links.new(cloudShapeMaskRamp.outputs[0],cloudMixColor.inputs[0])
+
+
+
+
+
+##Cloud Material
+cloudBSDF: nodeType = nodes.new("ShaderNodeBsdfPrincipled")
+
+cloudBSDF.inputs[0].default_value = cloudColor
+cloudBSDF.inputs[7].default_value = 0.65
+
+cloudBumpNoise: nodeType = nodes.new("ShaderNodeTexNoise")
+cloudBumpNoise.inputs[2].default_value = 45.0
+cloudBumpNoise.inputs[3].default_value = 16.0
+cloudBumpNoise.inputs[4].default_value = 0.397
+mat_planet.node_tree.links.new(textureCoordinates.outputs[3],cloudBumpNoise.inputs[0])
+
+cloudBumps: nodeType  = nodes.new("ShaderNodeBump")
+cloudBumps.inputs[0].default_value = 0.002 #bumpyness of clouds
+mat_planet.node_tree.links.new(cloudBumpNoise.outputs[0],cloudBumps.inputs[2])
+mat_planet.node_tree.links.new(cloudBumps.outputs[0],cloudBSDF.inputs[20])
+
+
+
+cloudMixShader: nodeType = nodes.new("ShaderNodeMixShader")
+
+mat_planet.node_tree.links.new(cloudMixColor.outputs[0],cloudMixShader.inputs[0])
+mat_planet.node_tree.links.new(earthOceanMixShader.outputs[0],cloudMixShader.inputs[1])
+mat_planet.node_tree.links.new(cloudBSDF.outputs[0],cloudMixShader.inputs[2])
+
+
+
+
+
 #Atmosphere
 atmoLayerWeight: nodeType = nodes.new("ShaderNodeLayerWeight")
 
@@ -185,7 +256,7 @@ atmoBSDF.inputs[0].default_value = atmosphereColor # atmosphere color
 
 planetAtmoMixShader: nodeType = nodes.new("ShaderNodeMixShader")
 mat_planet.node_tree.links.new(atmoMask.outputs[0],planetAtmoMixShader.inputs[0])
-mat_planet.node_tree.links.new(earthOceanMixShader.outputs[0],planetAtmoMixShader.inputs[1])
+mat_planet.node_tree.links.new(cloudMixShader.outputs[0],planetAtmoMixShader.inputs[1])
 mat_planet.node_tree.links.new(atmoBSDF.outputs[0],planetAtmoMixShader.inputs[2])
 
 
