@@ -19,8 +19,7 @@ earthColor1 = (0.017,0.1,0.026,1)
 earthColor2 =  (0.4,0.129,0.056,1)
 earthColor3 = (0.23,0.060,0.016,1)
 
-planetBumpyness = 0.2
-
+continentBumpyness = 0.2
 continentsScaleX = 0.6
 continentsScaleY = 1.0
 continentsScaleZ = 1.0
@@ -30,13 +29,12 @@ continentHeight = 0.35
 
 oceanColor1 = (0.009,0.019,0.122,1)
 oceanColor2 = (0.047,0.136,0.384,1)
-shoreSize = 0.06 # 0.0 is biggest
+shoreSize = 0.06 #0.0 biggest
 wavyness = 0.03
 
 cloudDivision = 4.0
 cloudsize = 0.15
 cloudColor = (0.8,0.8,0.8,0.8)
-
 
 atmosphereAlpha = 0.5
 atmoshereSize =0.050
@@ -89,7 +87,7 @@ mat_planet.node_tree.links.new(textureCoordinates.outputs[3],planetBumpNoise.inp
 
 
 bumpNode: nodeType = nodes.new("ShaderNodeBump")
-bumpNode.inputs[0].default_value = planetBumpyness
+bumpNode.inputs[0].default_value = continentBumpyness
 mat_planet.node_tree.links.new(planetBumpNoise.outputs[0], bumpNode.inputs[2])
 
 
