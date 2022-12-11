@@ -12,6 +12,7 @@ bpy.ops.mesh.primitive_uv_sphere_add(radius =1, enter_editmode=False, align='WOR
 ball = C.object
 
 
+
 earthNoiseScale = 2.6
 earthNoiseDetail = 16.0
 earthNoiseRoughness = 5.7
@@ -27,17 +28,22 @@ amountOfContinents = 0.5
 continentDivision = 0.57
 continentHeight = 0.35
 
+amountain = 5.8
+mountainThickness = 0.3 #0 is biggest
+mountainRoughness = 0.487
+mountainHeight = 0.25
+
 oceanColor1 = (0.009,0.019,0.122,1)
 oceanColor2 = (0.047,0.136,0.384,1)
 shoreSize = 0.06 #0.0 biggest
 wavyness = 0.03
 
-cloudDivision = 4.0
-cloudsize = 0.15
+cloudDivision = 3.5
+cloudsize = 0.12
 cloudColor = (0.8,0.8,0.8,0.8)
 
-atmosphereAlpha = 0.5
-atmoshereSize =0.050
+atmosphereAlpha = 0.3
+atmoshereSize = 0.050
 atmosphereColor =(0.050,0.279,1.0,1)
 
 bpy.ops.object.modifier_add(type='SUBSURF')
@@ -120,10 +126,60 @@ continentBumpNode:nodeType = nodes.new("ShaderNodeBump")
 
 continentBumpNode.inputs[0].default_value = continentHeight
 mat_planet.node_tree.links.new(continentMaskColorRamp.outputs[0], continentBumpNode.inputs[2])
-
-
 mat_planet.node_tree.links.new(bumpNode.outputs[0], continentBumpNode.inputs[3])
-mat_planet.node_tree.links.new(continentBumpNode.outputs[0], continentBSDF.inputs[20])
+
+
+
+
+#Gebirge
+mountainNoise1: nodeType = nodes.new("ShaderNodeTexNoise")
+mountainNoise1.inputs[2].default_value= 3.8
+mountainNoise1.inputs[3].default_value= 16.0
+mountainNoise1.inputs[4].default_value= mountainThickness
+mountainNoise1.inputs[5].default_value= amountain
+mat_planet.node_tree.links.new(textureCoordinates.outputs[3],mountainNoise1.inputs[0])
+
+
+mountainMask: nodeType = nodes.new("ShaderNodeValToRGB")
+mat_planet.node_tree.links.new(mountainNoise1.outputs[0],mountainMask.inputs[0])
+mountainMask.color_ramp.elements[0].position = 0.185
+mountainMask.color_ramp.elements[1].position = 0.333
+
+mountainNoise2: nodeType = nodes.new("ShaderNodeTexNoise")
+mountainNoise2.inputs[2].default_value= 98.6
+mountainNoise2.inputs[3].default_value= 16.0
+mountainNoise2.inputs[4].default_value= mountainRoughness
+mountainNoise2.inputs[5].default_value= amountain
+
+roughnessRamp: nodeType = nodes.new("ShaderNodeValToRGB")
+mat_planet.node_tree.links.new(textureCoordinates.outputs[3],mountainNoise2.inputs[0])
+mat_planet.node_tree.links.new(mountainNoise2.outputs[0],roughnessRamp.inputs[0])
+roughnessRamp.color_ramp.elements[0].position = 0.267
+roughnessRamp.color_ramp.elements[1].position = 1.0
+
+mountainMixNode: nodeType = nodes.new("ShaderNodeMixRGB")
+mountainMixNode.inputs[2].default_value = (0,0,0,1)
+mat_planet.node_tree.links.new(mountainMask.outputs[0],mountainMixNode.inputs[0])
+mat_planet.node_tree.links.new(roughnessRamp.outputs[0],mountainMixNode.inputs[1])
+
+
+
+mountainSnowAdd: nodeType = nodes.new("ShaderNodeMixRGB")
+mountainSnowAdd.blend_type = 'ADD'
+
+mat_planet.node_tree.links.new(earthyColorRamp.outputs[0],mountainSnowAdd.inputs[1])
+mat_planet.node_tree.links.new(mountainMixNode.outputs[0],mountainSnowAdd.inputs[2])
+mat_planet.node_tree.links.new(mountainSnowAdd.outputs[0],continentBSDF.inputs[0])
+
+
+mountainBumpNode:nodeType = nodes.new("ShaderNodeBump")
+
+mountainBumpNode.inputs[0].default_value = mountainHeight
+mat_planet.node_tree.links.new(continentBumpNode.outputs[0], mountainBumpNode.inputs[3])
+mat_planet.node_tree.links.new(mountainMixNode.outputs[0], mountainBumpNode.inputs[2])
+mat_planet.node_tree.links.new(mountainBumpNode.outputs[0], continentBSDF.inputs[20])
+
+
 
 
 #Ozean
@@ -260,9 +316,10 @@ mat_planet.node_tree.links.new(atmoBSDF.outputs[0],planetAtmoMixShader.inputs[2]
 
 
 mat_planet.node_tree.links.new(planetAtmoMixShader.outputs[0],materialOutput.inputs[0])
-#Todo Wolken 
+
 # Einstellbare Parameter / UI
 #Ringe
+#berge
 #Mond
 #Sterne?
 #Laufzeit??

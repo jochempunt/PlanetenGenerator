@@ -25,22 +25,25 @@ surfaceColorTwo = (0.55,0.2,0.05,1)
 #set transparency of edges (max 0.9)
 transparency = 0.3
 
-#BSDF values
-transmission = 0.7
-
-
-
 nodeType = bpy.types.Node;
 
-#create sphere
+#create planet sphere
 bpy.ops.mesh.primitive_uv_sphere_add(radius =1, enter_editmode=False, align='WORLD', location=(0, 0, 0), scale=(1, 1, 1))
 ball = C.object
+
+#deselect planet
+C.object.select_set(False)
+
+#create ring
+bpy.ops.mesh.primitive_uv_sphere_add(radius =2, enter_editmode=False, align='WORLD', location=(0, 0, 0), scale=(1, 1, 1))
+ring = C.object
+
 
 bpy.ops.object.modifier_add(type='SUBSURF')
 bpy.context.object.modifiers["Subdivision"].levels = levels
 bpy.context.object.modifiers["Subdivision"].render_levels = renderLevels
 
-def createMaterial(transmissionVal):
+def createPlanetMaterial(object):
     #planet material generation
     mat_planet: bpy.types.Material = bpy.data.materials.new("Planet Material")
     mat_planet.use_nodes = True
@@ -54,14 +57,36 @@ def createMaterial(transmissionVal):
     mat_planet.shadow_method = 'HASHED'
 
     #set Values in BSDF
-    surfaceBSDF.inputs[15].default_value = transmissionVal
+    surfaceBSDF.inputs[15].default_value = 0.7 #transmission
     surfaceBSDF.inputs[7].default_value = 0.7 #roughness
     surfaceBSDF.inputs[5].default_value = 0.6 #specular
     
     surfacePattern(surfaceColorOne, surfaceColorTwo, surfaceDetail, mappingX, mappingY, mappingZ, nodes, mat_planet, surfaceBSDF) 
     edgeTransparency(transparency, nodes, mat_planet, surfaceBSDF)
     
-    ball.data.materials.append(mat_planet)
+    object.data.materials.append(mat_planet)
+    
+def createRingMaterial(object):
+    #planet material generation
+    mat_ring: bpy.types.Material = bpy.data.materials.new("Ring Material")
+    mat_ring.use_nodes = True
+    nodes: typing.List[bpy.types.Nodes] = mat_ring.node_tree.nodes
+    surfaceBSDF: nodeType = nodes["Principled BSDF"]
+
+    #set material Options to make planet look 'soft'
+    mat_planet.use_screen_refraction = True
+    mat_planet.blend_method = 'BLEND'
+    mat_planet.show_transparent_back = False
+    mat_planet.shadow_method = 'HASHED'
+
+    #set Values in BSDF
+    surfaceBSDF.inputs[15].default_value = 0.7 #transmission
+    surfaceBSDF.inputs[7].default_value = 0.7 #roughness
+    surfaceBSDF.inputs[5].default_value = 0.6 #specular
+    
+    surfacePattern(surfaceColorOne, surfaceColorTwo, surfaceDetail, mappingX, mappingY, mappingZ, nodes, mat_planet, surfaceBSDF) 
+    
+    object.data.materials.append(mat_ring)
 
 def surfacePattern(firstColor, secondColor, detail, surfaceX, surfaceY, surfaceZ, nodes, mat_planet, surfaceBSDF):
 
@@ -128,4 +153,4 @@ def edgeTransparency(diff, nodes, mat_planet, surfaceBSDF):
     #set ColorRamp to Ease
     edgeColorRamp.color_ramp.interpolation = 'EASE'
     
-createMaterial(transmission)
+createPlanetMaterial(ball)
