@@ -14,16 +14,23 @@ mappingY = 0.5
 mappingZ = 0.2
 
 surfaceDetail = 2.2
+surfaceScale = 0.3
 
 #surfacePattern colors
 
 surfaceColorOne = (1,0.3,0.1,1)
 surfaceColorTwo = (0.55,0.2,0.05,1)
 
-
+#ring colors
+firstRingColor = (1,0.35,0.1,1)
+secondRingColor = (0.4, 0.3, 0.07, 1)
 
 #set transparency of edges (max 0.9)
 transparency = 0.3
+
+#Ring variables
+
+surfaceScaleRing = 105
 
 nodeType = bpy.types.Node;
 
@@ -43,7 +50,7 @@ bpy.ops.object.modifier_add(type='SUBSURF')
 bpy.context.object.modifiers["Subdivision"].levels = levels
 bpy.context.object.modifiers["Subdivision"].render_levels = renderLevels
 
-def createPlanetMaterial(object):
+def createPlanetMaterial(object, forPlanet):
     #planet material generation
     mat_planet: bpy.types.Material = bpy.data.materials.new("Planet Material")
     mat_planet.use_nodes = True
@@ -61,34 +68,15 @@ def createPlanetMaterial(object):
     surfaceBSDF.inputs[7].default_value = 0.7 #roughness
     surfaceBSDF.inputs[5].default_value = 0.6 #specular
     
-    surfacePattern(surfaceColorOne, surfaceColorTwo, surfaceDetail, mappingX, mappingY, mappingZ, nodes, mat_planet, surfaceBSDF) 
-    edgeTransparency(transparency, nodes, mat_planet, surfaceBSDF)
+    if(forPlanet == True):
+        surfacePattern(True, surfaceColorOne, surfaceColorTwo, surfaceScale, surfaceDetail, mappingX, mappingY, mappingZ, nodes, mat_planet, surfaceBSDF) 
+        edgeTransparency(transparency, nodes, mat_planet, surfaceBSDF)
+    else:
+        surfacePattern(False, (0, 0, 0, 1), (1, 1, 1, 1),surfaceScaleRing, 4, 0, 1, 1, nodes, mat_planet, surfaceBSDF) 
     
     object.data.materials.append(mat_planet)
-    
-def createRingMaterial(object):
-    #planet material generation
-    mat_ring: bpy.types.Material = bpy.data.materials.new("Ring Material")
-    mat_ring.use_nodes = True
-    nodes: typing.List[bpy.types.Nodes] = mat_ring.node_tree.nodes
-    surfaceBSDF: nodeType = nodes["Principled BSDF"]
 
-    #set material Options to make planet look 'soft'
-    mat_planet.use_screen_refraction = True
-    mat_planet.blend_method = 'BLEND'
-    mat_planet.show_transparent_back = False
-    mat_planet.shadow_method = 'HASHED'
-
-    #set Values in BSDF
-    surfaceBSDF.inputs[15].default_value = 0.7 #transmission
-    surfaceBSDF.inputs[7].default_value = 0.7 #roughness
-    surfaceBSDF.inputs[5].default_value = 0.6 #specular
-    
-    surfacePattern(surfaceColorOne, surfaceColorTwo, surfaceDetail, mappingX, mappingY, mappingZ, nodes, mat_planet, surfaceBSDF) 
-    
-    object.data.materials.append(mat_ring)
-
-def surfacePattern(firstColor, secondColor, detail, surfaceX, surfaceY, surfaceZ, nodes, mat_planet, surfaceBSDF):
+def surfacePattern(forPlanet, firstColor, secondColor, scale, detail, surfaceX, surfaceY, surfaceZ, nodes, mat_planet, surfaceBSDF):
 
     #create Surface Pattern with Noise Texture and ColorRamp
 
@@ -96,7 +84,7 @@ def surfacePattern(firstColor, secondColor, detail, surfaceX, surfaceY, surfaceZ
     surfaceNoise: nodeType = nodes.new("ShaderNodeTexNoise")
 
     #set values for Noise Texture
-    surfaceNoise.inputs[2].default_value = 0.3
+    surfaceNoise.inputs[2].default_value = scale
     surfaceNoise.inputs[3].default_value = detail
     surfaceNoise.inputs[4].default_value = 0.7
     surfaceNoise.inputs[5].default_value = 17
@@ -117,18 +105,47 @@ def surfacePattern(firstColor, secondColor, detail, surfaceX, surfaceY, surfaceZ
     #set positions for ColorRamp elements
     upperSurfaceLimit = 0.7
     LowerSurfaceLimit = 0.4
-    surfaceColorRamp.color_ramp.elements[0].position = upperSurfaceLimit
-    surfaceColorRamp.color_ramp.elements[1].position = LowerSurfaceLimit
 
     #set RGB for ColorRamp elements
     surfaceColorRamp.color_ramp.elements[0].color = firstColor
     surfaceColorRamp.color_ramp.elements[1].color = secondColor
 
     #link Nodes to BSDF
-    mat_planet.node_tree.links.new(surfaceColorRamp.outputs[0],surfaceBSDF.inputs[0])
-    mat_planet.node_tree.links.new(surfaceNoise.outputs[0],surfaceColorRamp.inputs[0])
-    mat_planet.node_tree.links.new(surfaceMapping.outputs[0],surfaceNoise.inputs[0])
-    mat_planet.node_tree.links.new(textureCoordinates.outputs[3],surfaceMapping.inputs[0])
+    if(forPlanet == True):
+        mat_planet.node_tree.links.new(surfaceColorRamp.outputs[0],surfaceBSDF.inputs[0])
+        mat_planet.node_tree.links.new(surfaceNoise.outputs[0],surfaceColorRamp.inputs[0])
+        mat_planet.node_tree.links.new(surfaceMapping.outputs[0],surfaceNoise.inputs[0])
+        mat_planet.node_tree.links.new(textureCoordinates.outputs[3],surfaceMapping.inputs[0])
+    else:
+        #create additional colorRamp for ring
+        ringSurfaceColorRamp: nodeType = nodes.new("ShaderNodeValToRGB")
+        
+        ringSurfaceColorRamp.color_ramp.elements[0].color = firstRingColor
+        ringSurfaceColorRamp.color_ramp.elements[1].color = secondRingColor
+        
+        ringSurfaceColorRamp.color_ramp.elements[0].position = 0.73
+        ringSurfaceColorRamp.color_ramp.elements[1].position = 0.55
+        #set Ring values
+        
+        #set values for Noise Texture for the Ring
+        surfaceNoise.inputs[4].default_value = 0.2
+        surfaceNoise.inputs[5].default_value = 0
+        
+        #set positions for ColorRamp elements for The Ring
+        upperSurfaceLimit = 0.6
+        LowerSurfaceLimit = 0.4
+        
+        #link Nodes to BSDF for Ring
+        mat_planet.node_tree.links.new(textureCoordinates.outputs[2],surfaceMapping.inputs[0])
+        mat_planet.node_tree.links.new(surfaceMapping.outputs[0],surfaceNoise.inputs[0])
+        mat_planet.node_tree.links.new(surfaceNoise.outputs[0],surfaceColorRamp.inputs[0])
+        mat_planet.node_tree.links.new(surfaceNoise.outputs[0],ringSurfaceColorRamp.inputs[0])
+        mat_planet.node_tree.links.new(ringSurfaceColorRamp.outputs[0],surfaceBSDF.inputs[0])
+        mat_planet.node_tree.links.new(surfaceColorRamp.outputs[0],surfaceBSDF.inputs[17])
+        mat_planet.node_tree.links.new(surfaceColorRamp.outputs[0],surfaceBSDF.inputs[19])
+        
+    surfaceColorRamp.color_ramp.elements[0].position = upperSurfaceLimit
+    surfaceColorRamp.color_ramp.elements[1].position = LowerSurfaceLimit
 
 
 #make edges transparent - Gas planet
@@ -153,4 +170,5 @@ def edgeTransparency(diff, nodes, mat_planet, surfaceBSDF):
     #set ColorRamp to Ease
     edgeColorRamp.color_ramp.interpolation = 'EASE'
     
-createPlanetMaterial(ball)
+createPlanetMaterial(ball, True)
+createPlanetMaterial(ring, False)
