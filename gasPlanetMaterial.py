@@ -1,6 +1,8 @@
 import bpy
 import typing
 from mathutils import *
+import math
+import bmesh
 D = bpy.data
 C = bpy.context
 
@@ -24,6 +26,10 @@ surfaceColorTwo = (0.55,0.2,0.05,1)
 #ring colors
 firstRingColor = (1,0.35,0.1,1)
 secondRingColor = (0.4, 0.3, 0.07, 1)
+
+#ring size
+innerRadius = 0.7
+outerRadius = 1.2
 
 #set transparency of edges (max 0.9)
 transparency = 0.3
@@ -50,6 +56,10 @@ bpy.ops.object.modifier_add(type='SUBSURF')
 bpy.context.object.modifiers["Subdivision"].levels = levels
 bpy.context.object.modifiers["Subdivision"].render_levels = renderLevels
 
+
+
+
+
 def createPlanetMaterial(object, forPlanet):
     #planet material generation
     mat_planet: bpy.types.Material = bpy.data.materials.new("Planet Material")
@@ -72,6 +82,7 @@ def createPlanetMaterial(object, forPlanet):
         surfacePattern(True, surfaceColorOne, surfaceColorTwo, surfaceScale, surfaceDetail, mappingX, mappingY, mappingZ, nodes, mat_planet, surfaceBSDF) 
         edgeTransparency(transparency, nodes, mat_planet, surfaceBSDF)
     else:
+        mat_planet.blend_method = 'BLEND'
         surfacePattern(False, (0, 0, 0, 1), (1, 1, 1, 1),surfaceScaleRing, 4, 0, 1, 1, nodes, mat_planet, surfaceBSDF) 
     
     object.data.materials.append(mat_planet)
@@ -169,6 +180,67 @@ def edgeTransparency(diff, nodes, mat_planet, surfaceBSDF):
 
     #set ColorRamp to Ease
     edgeColorRamp.color_ramp.interpolation = 'EASE'
+
+def angle_between_vector_and_ground_plane(vector):
+    # Calculate the angle between the vector and the ground plane (the xy-plane)
+    
+    dot_product = vector[0]*0 + vector[1]*0 + vector[2]*1
+    vector_length = math.sqrt(vector[0]**2 + vector[1]**2 + vector[2]**2)
+    cos_angle = dot_product / vector_length
+    angle = math.acos(cos_angle)
+    
+    # Convert the angle to degrees
+    angle_degrees = angle * 180 / math.pi
+    
+    return angle_degrees
     
 createPlanetMaterial(ball, True)
 createPlanetMaterial(ring, False)
+
+bpy.ops.object.editmode_toggle() 
+ring = bpy.context.edit_object
+ringMesh = ring.data
+bm = bmesh.from_edit_mesh(ringMesh)
+
+bpy.ops.mesh.select_all(action = 'DESELECT')
+
+for face in bm.faces:
+    angle = angle_between_vector_and_ground_plane(face.normal)
+    if angle  >90 and angle <100:
+        face.select = False
+    else:
+        face.select = True
+faces_select = [f for f in bm.faces if f.select] 
+bmesh.ops.delete(bm, geom=faces_select, context="FACES")  
+
+bpy.ops.mesh.select_all(action = 'DESELECT')
+
+for edge in bm.edges:
+    if edge.is_boundary:
+        # Calculate the average Z position of the edge vertices
+        z_pos = (edge.verts[0].co.z + edge.verts[1].co.z) / 2
+        if z_pos > 0:
+            edge.select = True
+            
+bpy.ops.transform.resize(value=(innerRadius, innerRadius, innerRadius))
+
+bpy.ops.mesh.select_all(action = 'DESELECT')
+lower_Edges= []
+for edge in bm.edges:
+    if edge.is_boundary:
+       
+        z_pos = (edge.verts[0].co.z + edge.verts[1].co.z) / 2
+        if z_pos <= 0:
+            edge.select = True   
+            lower_Edges.append(edge)  
+bpy.ops.transform.resize(value=(outerRadius, outerRadius, outerRadius))       
+
+for edge in lower_Edges:
+    edge.verts[0].co.z = 0
+    edge.verts[1].co.z = 0
+
+
+
+bmesh.update_edit_mesh(ringMesh)
+ringMesh.update()
+bpy.ops.object.editmode_toggle()

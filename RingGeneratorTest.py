@@ -29,10 +29,8 @@ bpy.ops.mesh.select_all(action = 'DESELECT')
 
 
 for face in bm.faces:
-    
-    print(face.normal)
     angle = angle_between_vector_and_ground_plane(face.normal)
-    if angle  >80 and angle <100:
+    if angle  >90 and angle <100:
         face.select = False
     else:
         face.select = True

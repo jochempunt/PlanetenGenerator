@@ -1,6 +1,7 @@
 import bpy
 import typing
 from mathutils import *
+
 D = bpy.data
 C = bpy.context
 
@@ -9,9 +10,11 @@ nodeType = bpy.types.Node;
 #create sphere
 bpy.ops.mesh.primitive_uv_sphere_add(radius =1, enter_editmode=False, align='WORLD', location=(0, 0, 0), scale=(1, 1, 1))
 
-ball = C.object
+planet = C.object
 
+bpy.ops.mesh.primitive_uv_sphere_add(radius =1.02, enter_editmode=False, align='WORLD', location=(0, 0, 0), scale=(1, 1, 1))
 
+clouds = C.object
 
 earthNoiseScale = 2.6
 earthNoiseDetail = 16.0
@@ -131,53 +134,15 @@ mat_planet.node_tree.links.new(bumpNode.outputs[0], continentBumpNode.inputs[3])
 
 
 
-#Gebirge
-mountainNoise1: nodeType = nodes.new("ShaderNodeTexNoise")
-mountainNoise1.inputs[2].default_value= 3.8
-mountainNoise1.inputs[3].default_value= 16.0
-mountainNoise1.inputs[4].default_value= mountainThickness
-mountainNoise1.inputs[5].default_value= amountain
-mat_planet.node_tree.links.new(textureCoordinates.outputs[3],mountainNoise1.inputs[0])
 
 
-mountainMask: nodeType = nodes.new("ShaderNodeValToRGB")
-mat_planet.node_tree.links.new(mountainNoise1.outputs[0],mountainMask.inputs[0])
-mountainMask.color_ramp.elements[0].position = 0.185
-mountainMask.color_ramp.elements[1].position = 0.333
-
-mountainNoise2: nodeType = nodes.new("ShaderNodeTexNoise")
-mountainNoise2.inputs[2].default_value= 98.6
-mountainNoise2.inputs[3].default_value= 16.0
-mountainNoise2.inputs[4].default_value= mountainRoughness
-mountainNoise2.inputs[5].default_value= amountain
-
-roughnessRamp: nodeType = nodes.new("ShaderNodeValToRGB")
-mat_planet.node_tree.links.new(textureCoordinates.outputs[3],mountainNoise2.inputs[0])
-mat_planet.node_tree.links.new(mountainNoise2.outputs[0],roughnessRamp.inputs[0])
-roughnessRamp.color_ramp.elements[0].position = 0.267
-roughnessRamp.color_ramp.elements[1].position = 1.0
-
-mountainMixNode: nodeType = nodes.new("ShaderNodeMixRGB")
-mountainMixNode.inputs[2].default_value = (0,0,0,1)
-mat_planet.node_tree.links.new(mountainMask.outputs[0],mountainMixNode.inputs[0])
-mat_planet.node_tree.links.new(roughnessRamp.outputs[0],mountainMixNode.inputs[1])
-
-
-
-mountainSnowAdd: nodeType = nodes.new("ShaderNodeMixRGB")
-mountainSnowAdd.blend_type = 'ADD'
-
-mat_planet.node_tree.links.new(earthyColorRamp.outputs[0],mountainSnowAdd.inputs[1])
-mat_planet.node_tree.links.new(mountainMixNode.outputs[0],mountainSnowAdd.inputs[2])
-mat_planet.node_tree.links.new(mountainSnowAdd.outputs[0],continentBSDF.inputs[0])
+mat_planet.node_tree.links.new(earthyColorRamp.outputs[0],continentBSDF.inputs[0])
 
 
 mountainBumpNode:nodeType = nodes.new("ShaderNodeBump")
 
-mountainBumpNode.inputs[0].default_value = mountainHeight
-mat_planet.node_tree.links.new(continentBumpNode.outputs[0], mountainBumpNode.inputs[3])
-mat_planet.node_tree.links.new(mountainMixNode.outputs[0], mountainBumpNode.inputs[2])
-mat_planet.node_tree.links.new(mountainBumpNode.outputs[0], continentBSDF.inputs[20])
+
+mat_planet.node_tree.links.new(continentBumpNode.outputs[0], continentBSDF.inputs[20])
 
 
 
@@ -224,98 +189,122 @@ mat_planet.node_tree.links.new(oceanBSDF.outputs[0],earthOceanMixShader.inputs[1
 mat_planet.node_tree.links.new(continentBSDF.outputs[0],earthOceanMixShader.inputs[2])
 
 materialOutput: nodeType = nodes["Material Output"]
-
+mat_planet.node_tree.links.new(earthOceanMixShader.outputs[0],materialOutput.inputs[0])
 
 #Clouds
+
+
+mat_Cloud: bpy.types.Material = bpy.data.materials.new("Cloud Material")
+mat_Cloud.use_nodes = True
+nodesC: typing.List[bpy.types.Nodes] = mat_Cloud.node_tree.nodes
+
+textureCoordinatesC: nodeType = nodesC.new("ShaderNodeTexCoord")
 #PuffyClouds
-cloudShapeNoise: nodeType = nodes.new("ShaderNodeTexNoise")
-mat_planet.node_tree.links.new(textureCoordinates.outputs[3],cloudShapeNoise.inputs[0])
+cloudShapeNoise: nodeType = nodesC.new("ShaderNodeTexNoise")
+mat_Cloud.node_tree.links.new(textureCoordinatesC.outputs[3],cloudShapeNoise.inputs[0])
 
 cloudShapeNoise.inputs[2].default_value = cloudDivision
 cloudShapeNoise.inputs[3].default_value = 16.0
 cloudShapeNoise.inputs[4].default_value = 0.65
 
 
-cloudShapeMaskRamp: nodeType = nodes.new("ShaderNodeValToRGB")
-mat_planet.node_tree.links.new(cloudShapeNoise.outputs[0],cloudShapeMaskRamp.inputs[0])
+cloudShapeMaskRamp: nodeType = nodesC.new("ShaderNodeValToRGB")
+mat_Cloud.node_tree.links.new(cloudShapeNoise.outputs[0],cloudShapeMaskRamp.inputs[0])
 cloudShapeMaskRamp.color_ramp.elements[0].position = 0.36
 
 cloudShapeMaskRamp.color_ramp.elements[1].position = cloudShapeMaskRamp.color_ramp.elements[0].position + cloudsize
 
 
-cloudPatternNoise:nodeType = nodes.new("ShaderNodeTexNoise")
+cloudPatternNoise:nodeType = nodesC.new("ShaderNodeTexNoise")
 cloudPatternNoise.inputs[2].default_value = 5.0
 cloudPatternNoise.inputs[3].default_value = 16.0
 cloudPatternNoise.inputs[4].default_value = 0.720
 cloudPatternNoise.inputs[5].default_value = 0.1
-mat_planet.node_tree.links.new(textureCoordinates.outputs[3],cloudPatternNoise.inputs[0])
+mat_Cloud.node_tree.links.new(textureCoordinatesC.outputs[3],cloudPatternNoise.inputs[0])
 
-cloudPatternVoronoi: nodeType = nodes.new("ShaderNodeTexVoronoi")
+cloudPatternVoronoi: nodeType = nodesC.new("ShaderNodeTexVoronoi")
 cloudPatternVoronoi.inputs[2].default_value = 1.9
-mat_planet.node_tree.links.new(cloudPatternNoise.outputs[0],cloudPatternVoronoi.inputs[0])
+mat_Cloud.node_tree.links.new(cloudPatternNoise.outputs[0],cloudPatternVoronoi.inputs[0])
 
-cloudMixColor: nodeType = nodes.new("ShaderNodeMixRGB")
+cloudMixColor: nodeType = nodesC.new("ShaderNodeMixRGB")
 cloudMixColor.inputs[2].default_value = (0,0,0,1)
-mat_planet.node_tree.links.new(cloudPatternVoronoi.outputs[0],cloudMixColor.inputs[1])
-mat_planet.node_tree.links.new(cloudShapeMaskRamp.outputs[0],cloudMixColor.inputs[0])
+mat_Cloud.node_tree.links.new(cloudPatternVoronoi.outputs[0],cloudMixColor.inputs[1])
+mat_Cloud.node_tree.links.new(cloudShapeMaskRamp.outputs[0],cloudMixColor.inputs[0])
 
 
 
 
 
 ##Cloud Material
-cloudBSDF: nodeType = nodes.new("ShaderNodeBsdfPrincipled")
+
+
+mat_Cloud.use_screen_refraction = True
+mat_Cloud.blend_method = 'BLEND'
+mat_Cloud.show_transparent_back = False
+mat_Cloud.shadow_method = 'HASHED'
+
+
+
+
+cloudBSDF: nodeType = nodesC["Principled BSDF"]
+
+
 
 cloudBSDF.inputs[0].default_value = cloudColor
 cloudBSDF.inputs[7].default_value = 0.65
 
-cloudBumpNoise: nodeType = nodes.new("ShaderNodeTexNoise")
+cloudBumpNoise: nodeType = nodesC.new("ShaderNodeTexNoise")
 cloudBumpNoise.inputs[2].default_value = 45.0
 cloudBumpNoise.inputs[3].default_value = 16.0
 cloudBumpNoise.inputs[4].default_value = 0.397
-mat_planet.node_tree.links.new(textureCoordinates.outputs[3],cloudBumpNoise.inputs[0])
+mat_Cloud.node_tree.links.new(textureCoordinates.outputs[3],cloudBumpNoise.inputs[0])
 
-cloudBumps: nodeType  = nodes.new("ShaderNodeBump")
+cloudBumps: nodeType  = nodesC.new("ShaderNodeBump")
 cloudBumps.inputs[0].default_value = 0.002 #bumpyness of clouds
-mat_planet.node_tree.links.new(cloudBumpNoise.outputs[0],cloudBumps.inputs[2])
-mat_planet.node_tree.links.new(cloudBumps.outputs[0],cloudBSDF.inputs[20])
+mat_Cloud.node_tree.links.new(cloudBumpNoise.outputs[0],cloudBumps.inputs[2])
+mat_Cloud.node_tree.links.new(cloudBumps.outputs[0],cloudBSDF.inputs[20])
 
 
 
-cloudMixShader: nodeType = nodes.new("ShaderNodeMixShader")
+transparentDSDF: nodeType = nodesC.new("ShaderNodeBsdfTransparent")
 
-mat_planet.node_tree.links.new(cloudMixColor.outputs[0],cloudMixShader.inputs[0])
-mat_planet.node_tree.links.new(earthOceanMixShader.outputs[0],cloudMixShader.inputs[1])
-mat_planet.node_tree.links.new(cloudBSDF.outputs[0],cloudMixShader.inputs[2])
+cloudMixShader: nodeType = nodesC.new("ShaderNodeMixShader")
 
+mat_Cloud.node_tree.links.new(cloudMixColor.outputs[0],cloudMixShader.inputs[0])
+
+mat_Cloud.node_tree.links.new(transparentDSDF.outputs[0],cloudMixShader.inputs[1])
+mat_Cloud.node_tree.links.new(cloudBSDF.outputs[0],cloudMixShader.inputs[2])
+
+materialOutputC: nodeType = nodesC["Material Output"]
+# mat_Cloud.node_tree.links.new(cloudMixShader.outputs[0],materialOutputC.inputs[0])
 
 
 
 
 #Atmosphere
-atmoLayerWeight: nodeType = nodes.new("ShaderNodeLayerWeight")
+atmoLayerWeight: nodeType = nodesC.new("ShaderNodeLayerWeight")
 
 atmoLayerWeight.inputs[0].default_value = atmosphereAlpha
 
-atmoMask: nodeType = nodes.new("ShaderNodeValToRGB")
-mat_planet.node_tree.links.new(atmoLayerWeight.outputs[0],atmoMask.inputs[0])
+atmoMask: nodeType = nodesC.new("ShaderNodeValToRGB")
+mat_Cloud.node_tree.links.new(atmoLayerWeight.outputs[0],atmoMask.inputs[0])
 
 atmoMask.color_ramp.elements[0].position = atmoshereSize
 atmoMask.color_ramp.elements[1].position = 0.808
 
-atmoBSDF: nodeType = nodes.new("ShaderNodeBsdfPrincipled")
-mat_planet.node_tree.links.new(oceanColorRamp.outputs[0],oceanBSDF.inputs[0])
+atmoBSDF: nodeType = nodesC.new("ShaderNodeBsdfPrincipled")
+mat_Cloud.node_tree.links.new(oceanColorRamp.outputs[0],oceanBSDF.inputs[0])
 
 atmoBSDF.inputs[0].default_value = atmosphereColor # atmosphere color
 
-planetAtmoMixShader: nodeType = nodes.new("ShaderNodeMixShader")
-mat_planet.node_tree.links.new(atmoMask.outputs[0],planetAtmoMixShader.inputs[0])
-mat_planet.node_tree.links.new(cloudMixShader.outputs[0],planetAtmoMixShader.inputs[1])
-mat_planet.node_tree.links.new(atmoBSDF.outputs[0],planetAtmoMixShader.inputs[2])
+planetAtmoMixShader: nodeType = nodesC.new("ShaderNodeMixShader")
+mat_Cloud.node_tree.links.new(atmoMask.outputs[0],planetAtmoMixShader.inputs[0])
+mat_Cloud.node_tree.links.new(cloudMixShader.outputs[0],planetAtmoMixShader.inputs[1])
+mat_Cloud.node_tree.links.new(atmoBSDF.outputs[0],planetAtmoMixShader.inputs[2])
 
 
 
-mat_planet.node_tree.links.new(planetAtmoMixShader.outputs[0],materialOutput.inputs[0])
+mat_Cloud.node_tree.links.new(planetAtmoMixShader.outputs[0],materialOutputC.inputs[0])
 
 # Einstellbare Parameter / UI
 #Ringe
@@ -324,4 +313,5 @@ mat_planet.node_tree.links.new(planetAtmoMixShader.outputs[0],materialOutput.inp
 #Sterne?
 #Laufzeit??
 
-ball.data.materials.append(mat_planet)
+planet.data.materials.append(mat_planet)
+clouds.data.materials.append(mat_Cloud)
