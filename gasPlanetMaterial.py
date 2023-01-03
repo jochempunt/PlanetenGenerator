@@ -29,7 +29,7 @@ secondRingColor = (0.4, 0.3, 0.07, 1)
 
 #ring size
 innerRadius = 0.7
-outerRadius = 1.2
+outerRadius = 0.7
 
 #set transparency of edges (max 0.9)
 transparency = 0.3
@@ -120,7 +120,7 @@ def surfacePattern(forPlanet, firstColor, secondColor, scale, detail, surfaceX, 
     #set RGB for ColorRamp elements
     surfaceColorRamp.color_ramp.elements[0].color = firstColor
     surfaceColorRamp.color_ramp.elements[1].color = secondColor
-
+    
     #link Nodes to BSDF
     if(forPlanet == True):
         mat_planet.node_tree.links.new(surfaceColorRamp.outputs[0],surfaceBSDF.inputs[0])
@@ -197,50 +197,54 @@ def angle_between_vector_and_ground_plane(vector):
 createPlanetMaterial(ball, True)
 createPlanetMaterial(ring, False)
 
-bpy.ops.object.editmode_toggle() 
-ring = bpy.context.edit_object
-ringMesh = ring.data
-bm = bmesh.from_edit_mesh(ringMesh)
 
-bpy.ops.mesh.select_all(action = 'DESELECT')
-
-for face in bm.faces:
-    angle = angle_between_vector_and_ground_plane(face.normal)
-    if angle  >90 and angle <100:
-        face.select = False
-    else:
-        face.select = True
-faces_select = [f for f in bm.faces if f.select] 
-bmesh.ops.delete(bm, geom=faces_select, context="FACES")  
-
-bpy.ops.mesh.select_all(action = 'DESELECT')
-
-for edge in bm.edges:
-    if edge.is_boundary:
-        # Calculate the average Z position of the edge vertices
-        z_pos = (edge.verts[0].co.z + edge.verts[1].co.z) / 2
-        if z_pos > 0:
-            edge.select = True
-            
-bpy.ops.transform.resize(value=(innerRadius, innerRadius, innerRadius))
-
-bpy.ops.mesh.select_all(action = 'DESELECT')
-lower_Edges= []
-for edge in bm.edges:
-    if edge.is_boundary:
-       
-        z_pos = (edge.verts[0].co.z + edge.verts[1].co.z) / 2
-        if z_pos <= 0:
-            edge.select = True   
-            lower_Edges.append(edge)  
-bpy.ops.transform.resize(value=(outerRadius, outerRadius, outerRadius))       
-
-for edge in lower_Edges:
-    edge.verts[0].co.z = 0
-    edge.verts[1].co.z = 0
+def createRingShape():
 
 
+    bpy.ops.object.editmode_toggle() 
+    ring = bpy.context.edit_object
+    ringMesh = ring.data
+    bm = bmesh.from_edit_mesh(ringMesh)
 
-bmesh.update_edit_mesh(ringMesh)
-ringMesh.update()
-bpy.ops.object.editmode_toggle()
+    bpy.ops.mesh.select_all(action = 'DESELECT')
+
+    for face in bm.faces:
+        angle = angle_between_vector_and_ground_plane(face.normal)
+        if angle  >90 and angle <100:
+            face.select = False
+        else:
+            face.select = True
+    faces_select = [f for f in bm.faces if f.select] 
+    bmesh.ops.delete(bm, geom=faces_select, context="FACES")  
+
+    bpy.ops.mesh.select_all(action = 'DESELECT')
+
+    for edge in bm.edges:
+        if edge.is_boundary:
+            # Calculate the average Z position of the edge vertices
+            z_pos = (edge.verts[0].co.z + edge.verts[1].co.z) / 2
+            if z_pos > 0:
+                edge.select = True
+                
+    bpy.ops.transform.resize(value=(innerRadius, innerRadius, innerRadius))
+
+    bpy.ops.mesh.select_all(action = 'DESELECT')
+    lower_Edges= []
+    for edge in bm.edges:
+        if edge.is_boundary:
+        
+            z_pos = (edge.verts[0].co.z + edge.verts[1].co.z) / 2
+            if z_pos <= 0:
+                edge.select = True   
+                lower_Edges.append(edge)  
+    bpy.ops.transform.resize(value=(outerRadius, outerRadius, outerRadius))       
+
+    for edge in lower_Edges:
+        edge.verts[0].co.z = 0
+        edge.verts[1].co.z = 0
+
+
+
+    bmesh.update_edit_mesh(ringMesh)
+    ringMesh.update()
+    bpy.ops.object.editmode_toggle()
