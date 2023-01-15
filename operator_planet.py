@@ -137,7 +137,7 @@ def surfacePattern(forPlanet, firstColor, secondColor, scale, detail, surfaceX, 
         mat_planet.node_tree.links.new(surfaceNoise.outputs[0],ringSurfaceColorRamp.inputs[0])
         mat_planet.node_tree.links.new(ringSurfaceColorRamp.outputs[0],surfaceBSDF.inputs[0])
         mat_planet.node_tree.links.new(surfaceColorRamp.outputs[0],surfaceBSDF.inputs[17])
-        mat_planet.node_tree.links.new(surfaceColorRamp.outputs[0],surfaceBSDF.inputs[19])
+        mat_planet.node_tree.links.new(surfaceColorRamp.outputs[0],surfaceBSDF.inputs[21])
         
     surfaceColorRamp.color_ramp.elements[0].position = upperSurfaceLimit
     surfaceColorRamp.color_ramp.elements[1].position = LowerSurfaceLimit
@@ -158,7 +158,7 @@ def edgeTransparency(diff, nodes, mat_planet, surfaceBSDF):
     edgeColorRamp.color_ramp.elements[1].position = lowerLimit
 
     #link Nodes to BSDF
-    mat_planet.node_tree.links.new(edgeColorRamp.outputs[0],surfaceBSDF.inputs[19])
+    mat_planet.node_tree.links.new(edgeColorRamp.outputs[0],surfaceBSDF.inputs[21])
     mat_planet.node_tree.links.new(layerWeight.outputs[1],edgeColorRamp.inputs[0])
 
     #set ColorRamp to Ease
@@ -212,7 +212,7 @@ def createRingShape(innerRadius,outerRadius):
         if edge.is_boundary:
             # Calculate the average Z position of the edge vertices
             z_pos = (edge.verts[0].co.z + edge.verts[1].co.z) / 2
-            if z_pos > 0:
+            if z_pos != 0:
                 edge.select = True
                 
     bpy.ops.transform.resize(value=(innerRadius, innerRadius, innerRadius))
@@ -241,12 +241,14 @@ def createRingShape(innerRadius,outerRadius):
 
 
 def main(context,input):
-    planet = createPlanet(context,input)
-    createPlanetMaterial(input,planet,True) 
-    if input.hasRing:
-        ring = createRing(context,input)
-        createPlanetMaterial(input,ring,False)
-        createRingShape(input.innerRadius, input.outerRadius)
+    
+    if input.planeten_art == "GASPLANET":
+        planet = createPlanet(context,input)
+        createPlanetMaterial(input,planet,True) 
+        if input.hasRing:
+            ring = createRing(context,input)
+            createPlanetMaterial(input,ring,False)
+            createRingShape(input.innerRadius, input.outerRadius)
 
 class SimpleOperator(bpy.types.Operator):
     """Tooltip"""
@@ -263,6 +265,18 @@ class SimpleOperator(bpy.types.Operator):
         
         return {'FINISHED'}
     
+
+    planeten_art: bpy.props.EnumProperty(
+        name="Art",
+        description="Choose one of the options",
+        items=[("GASPLANET", "Gasplanet ", ""),
+               ("GESTEINSPLANET", "Gesteinsplanet", "")
+               ],
+        default="GASPLANET"
+    )
+
+
+
 
     #Subdivision Settings    
     levels: bpy.props.IntProperty(
@@ -403,31 +417,274 @@ class SimpleOperator(bpy.types.Operator):
         options={'SKIP_SAVE'})
     
     
+    #Gesteinsplanet
+    
+    
+    earthNoiseScale:bpy.props.FloatProperty(
+        name='earthNoiseScale',
+        description='inner radius of the ring',
+        default = (2.6),
+        min= 0.01,
+        max= 5,
+        options={'SKIP_SAVE'})
+    
+    earthNoiseDetail:bpy.props.FloatProperty(
+        name='earthNoiseDetail',
+        description='inner radius of the ring',
+        default = (16.0),
+        min= 1,
+        max= 40,
+        options={'SKIP_SAVE'}) 
+    
+ 
+    earthNoiseRoughness:bpy.props.FloatProperty(
+        name='earthNoiseRoughness',
+        description='inner radius of the ring',
+        default = (5.7),
+        min= 1,
+        max= 20,
+        options={'SKIP_SAVE'}) 
+    
+    earthColor1:bpy.props.FloatVectorProperty(
+        name='earthColor1',
+        default=(0.017,0.1,0.026,1),
+        min=0.0, max=1.0,
+        subtype='COLOR',
+        size=4,
+        options={'SKIP_SAVE'}
+    ) 
+    
+    earthColor2:bpy.props.FloatVectorProperty(
+        name='earthColor2',
+        default=(0.4,0.129,0.056,1),
+        min=0.0, max=1.0,
+        subtype='COLOR',
+        size=4,
+        options={'SKIP_SAVE'}
+    ) 
+          
+    earthColor3:bpy.props.FloatVectorProperty(
+        name='earthColor3',
+        default=(0.23,0.060,0.016,1),
+        min=0.0, max=1.0,
+        subtype='COLOR',
+        size=4,
+        options={'SKIP_SAVE'}
+    ) 
+           
+    #continents
+    
+    continentBumpyness:bpy.props.FloatProperty(
+        name='continentBumpyness',
+        description='how bumpy the continents are',
+        default = (0.2),
+        min= 0,
+        max= 1,
+        options={'SKIP_SAVE'}) 
+    
+    
+     
+   
+    continentsScaleX:bpy.props.FloatProperty(
+        name='continentsScaleX',
+        description='continentsScaleX',
+        default = (0.6),
+        min= 0,
+        max= 1,
+        options={'SKIP_SAVE'}) 
+    
+    continentsScaleY:bpy.props.FloatProperty(
+        name='continentsScaleY',
+        description='continentsScaleY',
+        default = (1),
+        min= 0,
+        max= 1,
+        options={'SKIP_SAVE'}) 
+    
+    continentsScaleZ:bpy.props.FloatProperty(
+        name='continentsScaleZ',
+        description='continentsScaleZ',
+        default = (1),
+        min= 0,
+        max= 1,
+        options={'SKIP_SAVE'}) 
+       
+    amountOfContinents:bpy.props.FloatProperty(
+        name='amountOfContinents',
+        description='amount of continents',
+        default = (0.5),
+        min= 0.01,
+        max= 1,
+        options={'SKIP_SAVE'}) 
+    
+    
+
+    continentDivision:bpy.props.FloatProperty(
+        name='continentDivision',
+        description='how much divided the continents are',
+        default = (0.57),
+        min= 0.01,
+        max= 1,
+        options={'SKIP_SAVE'}) 
+    
+ 
+    continentHeight:bpy.props.FloatProperty(
+        name='continentHeight',
+        description='continentHeight',
+        default = (0.35 ),
+        min= 0.01,
+        max= 1,
+        options={'SKIP_SAVE'}) 
+  #ozeane
+  
+    oceanColor1:bpy.props.FloatVectorProperty(
+        name='oceanColor1',
+        default=(0.009,0.019,0.122,1),
+        min=0.0, max=1.0,
+        subtype='COLOR',
+        size=4,
+        options={'SKIP_SAVE'}
+    )   
+  
+    oceanColor2:bpy.props.FloatVectorProperty(
+        name='oceanColor1',
+        default=(0.047,0.136,0.384,1),
+        min=0.0, max=1.0,
+        subtype='COLOR',
+        size=4,
+        options={'SKIP_SAVE'}
+    )   
+    
+    shoreSize:bpy.props.FloatProperty(
+        name='shoreSize',
+        description='shoreSize - 0.0 is biggest',
+        default = (0.06),
+        min= 0.0,
+        max= 0.1,
+        options={'SKIP_SAVE'})     
+        
+    wavyness:bpy.props.FloatProperty(
+        name='shoreSize',
+        description='shoreSize - 0.0 is biggest',
+        default = (0.03),
+        min= 0.0,
+        max= 0.1,
+        options={'SKIP_SAVE'})   
+
+    cloudDivision:bpy.props.FloatProperty(
+        name='cloudDivision',
+        description='cloudDivision',
+        default = (3.5),
+        min= 0.1,
+        max= 10,
+        options={'SKIP_SAVE'})   
+    
+    cloudsize:bpy.props.FloatProperty(
+        name='cloudsize',
+        description='cloudsize',
+        default = (0.12),
+        min= 0.01,
+        max= 1,
+        options={'SKIP_SAVE'})  
+
+    cloudColor:bpy.props.FloatVectorProperty(
+        name='cloudColor',
+        default=(0.8,0.8,0.8,0.8),
+        min=0.0, max=1.0,
+        subtype='COLOR',
+        size=4,
+        options={'SKIP_SAVE'}
+    )   
+
+    atmosphereAlpha:bpy.props.FloatProperty(
+        name='atmosphereAlpha',
+        description='atmosphereAlpha',
+        default = (0.3),
+        min= 0.0,
+        max= 1,
+        options={'SKIP_SAVE'})   
+    
+    atmoshereSize:bpy.props.FloatProperty(
+        name='atmosphereAlpha',
+        description='atmosphereAlpha',
+        default = (0.05),
+        min= 0.0,
+        max= 0.2,
+        options={'SKIP_SAVE'})   
+
+    atmosphereColor:bpy.props.FloatVectorProperty(
+        name='atmosphereColor',
+        default=(0.050,0.279,1.0,1),
+        min=0.0, max=1.0,
+        subtype='COLOR',
+        size=4,
+        options={'SKIP_SAVE'})  
+
+
+  
+           
+    
+    
+    
     def draw(self, context):
         layout = self.layout
         layout.label(text='Subdivision Settings:')
         layout.prop(self, 'levels')
         layout.prop(self, 'renderLevels')
-        layout.label(text='Surface Pattern:')
-        layout.prop(self, 'mappingX')
-        layout.prop(self, 'mappingY')
-        layout.prop(self, 'mappingZ')
-        layout.prop(self, 'surfaceDetail')
-        layout.prop(self, 'surfaceScale')
-        layout.prop(self, 'surfaceColorOne')
-        layout.prop(self, 'surfaceColorTwo')
-        layout.label(text='Ring Settings:')
-        layout.prop(self, 'hasRing')
-        if self.hasRing:
-            layout.prop(self,'innerRadius')
-            layout.prop(self,'outerRadius')
-            layout.prop(self,'firstRingColor')
-            layout.prop(self,'secondRingColor')
-            layout.prop(self,'surfaceScaleRing')
-        layout.label(text='Edge Settings:')
-        layout.prop(self, 'edgeTransparency')
-      
+        layout.prop(self, "planeten_art", expand=False)
+        if self.planeten_art == "GASPLANET":
+            layout.label(text='Surface Pattern:')
+            layout.prop(self, 'mappingX')
+            layout.prop(self, 'mappingY')
+            layout.prop(self, 'mappingZ')
+            layout.prop(self, 'surfaceDetail')
+            layout.prop(self, 'surfaceScale')
+            layout.prop(self, 'surfaceColorOne')
+            layout.prop(self, 'surfaceColorTwo')
+            layout.label(text='Ring Settings:')
+            layout.prop(self, 'hasRing')
+            if self.hasRing:
+                layout.prop(self,'innerRadius')
+                layout.prop(self,'outerRadius')
+                layout.prop(self,'firstRingColor')
+                layout.prop(self,'secondRingColor')
+                layout.prop(self,'surfaceScaleRing')
+            layout.label(text='Edge Settings:')
+            layout.prop(self, 'edgeTransparency')
+        elif self.planeten_art == "GESTEINSPLANET":
+            layout.label(text='Ground Pattern:')
+            layout.prop(self, 'earthNoiseScale')
+            layout.prop(self, 'earthNoiseDetail')
+            layout.prop(self, 'earthNoiseRoughness')
+            layout.prop(self, 'earthColor1')
+            layout.prop(self, 'earthColor2')
+            layout.prop(self, 'earthColor3')
+            layout.label(text='Continents:')
+            layout.prop(self, 'continentBumpyness')
+            layout.prop(self, 'continentsScaleX')
+            layout.prop(self, 'continentsScaleY')
+            layout.prop(self, 'continentsScaleZ')
+            layout.prop(self, 'amountOfContinents')
+            layout.prop(self, 'continentDivision')
+            layout.prop(self, 'continentHeight')
+            layout.label(text='Oceans:')
+            layout.prop(self, 'oceanColor1')
+            layout.prop(self, 'oceanColor2')
+            layout.prop(self, 'shoreSize')
+            layout.prop(self, 'wavyness')
+            layout.label(text='Clouds:')
+            layout.prop(self, 'cloudDivision')
+            layout.prop(self, 'cloudsize')
+            layout.prop(self, 'cloudColor')
+            layout.label(text='Atmosphere:')
+            layout.prop(self, 'atmosphereAlpha')
+            layout.prop(self, 'atmoshereSize')
+            layout.prop(self, 'atmosphereColor')
         
+
+
+
+
             
 
 def menu_func(self, context):
