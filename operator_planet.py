@@ -9,7 +9,7 @@ import bmesh
 D = bpy.data
 C = bpy.context
 
-
+nodeType = bpy.types.Node;
 
 
 
@@ -27,7 +27,14 @@ def createPlanet(context,input):
     
     return ball
 
+def createAtmosphere(context,input):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius =1.02, enter_editmode=False, align='WORLD', location=(0, 0, 0), scale=(1, 1, 1))
+    atmos = C.object
+    bpy.ops.object.modifier_add(type='SUBSURF')
+    bpy.context.object.modifiers["Subdivision"].levels = input.levels
+    bpy.context.object.modifiers["Subdivision"].render_levels = input.renderLevels
 
+    return atmos
 
 def createRing(context,input):
     C.object.select_set(False)
@@ -239,16 +246,262 @@ def createRingShape(innerRadius,outerRadius):
     bpy.ops.object.editmode_toggle()
 
 
+#gesteinsplanet
+
+
+def createGesteinsPlanet(_planet,input):
+    mat_planet: bpy.types.Material = bpy.data.materials.new("Planet Material")
+    mat_planet.use_nodes = True
+    nodes: typing.List[bpy.types.Nodes] = mat_planet.node_tree.nodes
+    continentBSDF: nodeType = nodes["Principled BSDF"]
+    textureCoordinates: nodeType = nodes.new("ShaderNodeTexCoord")
+    earthNoise:nodeType = nodes.new("ShaderNodeTexNoise")
+    earthNoise.inputs[2].default_value= input.earthNoiseScale
+    earthNoise.inputs[3].default_value= input.earthNoiseDetail
+    earthNoise.inputs[4].default_value= input.earthNoiseRoughness
+    earthyColorRamp: nodeType = nodes.new("ShaderNodeValToRGB")
+    earthyColorRamp.color_ramp.elements[0].position = 0.433
+    earthyColorRamp.color_ramp.elements[1].position = 0.7
+    earthyColorRamp.color_ramp.elements.new(0.6)
+    #die position des elements ist die wie weit es links ist 
+
+    earthyColorRamp.color_ramp.elements[0].color = input.earthColor1
+    earthyColorRamp.color_ramp.elements[1].color = input.earthColor2
+    earthyColorRamp.color_ramp.elements[2].color = input.earthColor3
+    # colors in RGBA format
+
+    #continent/earth color
+    mat_planet.node_tree.links.new(textureCoordinates.outputs[3],earthNoise.inputs[0])
+    mat_planet.node_tree.links.new(earthNoise.outputs[0],earthyColorRamp.inputs[0])
+    mat_planet.node_tree.links.new(earthyColorRamp.outputs[0],continentBSDF.inputs[0])
+
+    #continent Bumps
+    planetBumpNoise:nodeType = nodes.new("ShaderNodeTexNoise")
+
+    planetBumpNoise.inputs[2].default_value= 50.0
+    planetBumpNoise.inputs[3].default_value= 16.0
+    planetBumpNoise.inputs[4].default_value= 0.572
+    planetBumpNoise.inputs[5].default_value= 0
+
+    mat_planet.node_tree.links.new(textureCoordinates.outputs[3],planetBumpNoise.inputs[0])
+
+
+    bumpNode: nodeType = nodes.new("ShaderNodeBump")
+    bumpNode.inputs[0].default_value = input.continentBumpyness
+    mat_planet.node_tree.links.new(planetBumpNoise.outputs[0], bumpNode.inputs[2])
+
+
+    #Continents
+    continentMapping: nodeType = nodes.new("ShaderNodeMapping");
+    mat_planet.node_tree.links.new(textureCoordinates.outputs[3],continentMapping.inputs[0])
+
+
+
+    continentMapping.inputs[3].default_value[0] = input.continentsScaleX
+    continentMapping.inputs[3].default_value[1] = input.continentsScaleY
+    continentMapping.inputs[3].default_value[2] = input.continentsScaleZ
+
+    continentNoise: nodeType = nodes.new("ShaderNodeTexNoise");
+    mat_planet.node_tree.links.new(continentMapping.outputs[0],continentNoise.inputs[0])
+
+    continentNoise.inputs[2].default_value= input.amountOfContinents
+    continentNoise.inputs[3].default_value= 15.6
+    continentNoise.inputs[4].default_value= input.continentDivision
+    continentNoise.inputs[5].default_value= 0.2
+
+    continentMaskColorRamp: nodeType = nodes.new("ShaderNodeValToRGB")
+
+    mat_planet.node_tree.links.new(continentNoise.outputs[0],continentMaskColorRamp.inputs[0])
+
+
+    oceanAmount = input.oceanAmount *  0.555;
+    continentMaskColorRamp.color_ramp.elements[0].position = oceanAmount
+    continentMaskColorRamp.color_ramp.elements[1].position = 0.561
+
+    continentBumpNode:nodeType = nodes.new("ShaderNodeBump")
+
+    continentBumpNode.inputs[0].default_value = input.continentHeight
+    mat_planet.node_tree.links.new(continentMaskColorRamp.outputs[0], continentBumpNode.inputs[2])
+    mat_planet.node_tree.links.new(bumpNode.outputs[0], continentBumpNode.inputs[3])
+
+
+    mat_planet.node_tree.links.new(earthyColorRamp.outputs[0],continentBSDF.inputs[0])
+
+ 
+
+    mat_planet.node_tree.links.new(continentBumpNode.outputs[0], continentBSDF.inputs[22])
+
+    #Ozean
+    oceanColorRamp: nodeType = nodes.new("ShaderNodeValToRGB")
+    mat_planet.node_tree.links.new(continentNoise.outputs[0],oceanColorRamp.inputs[0])
+
+    oceanColorRamp.color_ramp.elements[0].position = 0.525
+    # distance beteweem these elements is the size of the "shore/beaches"
+    oceanColorRamp.color_ramp.elements[1].position = oceanColorRamp.color_ramp.elements[0].position + input.shoreSize
+
+    oceanColorRamp.color_ramp.elements[0].color = input.oceanColor1
+    oceanColorRamp.color_ramp.elements[1].color = input.oceanColor2
+
+    oceanBSDF: nodeType = nodes.new("ShaderNodeBsdfPrincipled")
+    mat_planet.node_tree.links.new(oceanColorRamp.outputs[0],oceanBSDF.inputs[0])
+    ##metalic
+    oceanBSDF.inputs[4].default_value = 0.355
+    ##roughness
+    oceanBSDF.inputs[7].default_value = 0.595
+
+
+    #Waves for the ocean
+    wavesNoise: nodeType = nodes.new("ShaderNodeTexNoise")
+    wavesNoise.inputs[2].default_value= 70.0
+    wavesNoise.inputs[3].default_value= 15.0
+    wavesNoise.inputs[4].default_value= 0.40
+    wavesNoise.inputs[5].default_value= 0.0
+    mat_planet.node_tree.links.new(textureCoordinates.outputs[3],wavesNoise.inputs[0])
+
+    wavesBumps: nodeType  = nodes.new("ShaderNodeBump")
+
+    wavesBumps.inputs[0].default_value = input.wavyness
+    mat_planet.node_tree.links.new(wavesNoise.outputs[0],wavesBumps.inputs[2])
+    mat_planet.node_tree.links.new(wavesBumps.outputs[0],oceanBSDF.inputs[22])
+
+    earthOceanMixShader: nodeType = nodes.new("ShaderNodeMixShader")
+    mat_planet.node_tree.links.new(continentMaskColorRamp.outputs[0],earthOceanMixShader.inputs[0])
+    mat_planet.node_tree.links.new(oceanBSDF.outputs[0],earthOceanMixShader.inputs[1])
+    mat_planet.node_tree.links.new(continentBSDF.outputs[0],earthOceanMixShader.inputs[2])
+
+    materialOutput: nodeType = nodes["Material Output"]
+    mat_planet.node_tree.links.new(earthOceanMixShader.outputs[0],materialOutput.inputs[0])
+    _planet.data.materials.append(mat_planet)
+
+def atmospherePattern(_atmosphere,_clouds,input):
+   
+    
+    
+    mat_Cloud: bpy.types.Material = bpy.data.materials.new("Cloud Material")
+    mat_Cloud.use_nodes = True
+    nodesC: typing.List[bpy.types.Nodes] = mat_Cloud.node_tree.nodes
+    
+    
+    atmoMask: nodeType = nodesC.new("ShaderNodeValToRGB")
+    
+    #Atmosphere
+    atmoLayerWeight: nodeType = nodesC.new("ShaderNodeLayerWeight")
+
+    atmoLayerWeight.inputs[0].default_value = input.atmosphereAlpha
+
+  
+    
+    mat_Cloud.node_tree.links.new(atmoLayerWeight.outputs[0],atmoMask.inputs[0])
+
+    atmoMask.color_ramp.elements[0].position = input.atmoshereSize
+    atmoMask.color_ramp.elements[1].position = 0.808
+
+    atmoBSDF: nodeType = nodesC.new("ShaderNodeBsdfPrincipled")
+    #mat_Cloud.node_tree.links.new(oceanColorRamp.outputs[0],oceanBSDF.inputs[0])
+
+    atmoBSDF.inputs[0].default_value =input.atmosphereColor # atmosphere color
+   
+    if _clouds == True:
+        #Clouds
+       
+
+        textureCoordinatesC: nodeType = nodesC.new("ShaderNodeTexCoord")
+        #PuffyClouds
+        cloudShapeNoise: nodeType = nodesC.new("ShaderNodeTexNoise")
+        mat_Cloud.node_tree.links.new(textureCoordinatesC.outputs[3],cloudShapeNoise.inputs[0])
+
+        cloudShapeNoise.inputs[2].default_value = input.cloudDivision
+        cloudShapeNoise.inputs[3].default_value = 16.0
+        cloudShapeNoise.inputs[4].default_value = 0.65
+        cloudShapeMaskRamp: nodeType = nodesC.new("ShaderNodeValToRGB")
+        mat_Cloud.node_tree.links.new(cloudShapeNoise.outputs[0],cloudShapeMaskRamp.inputs[0])
+        cloudShapeMaskRamp.color_ramp.elements[0].position = 0.36
+
+        cloudShapeMaskRamp.color_ramp.elements[1].position = cloudShapeMaskRamp.color_ramp.elements[0].position + input.cloudsize
+
+        cloudPatternNoise:nodeType = nodesC.new("ShaderNodeTexNoise")
+        cloudPatternNoise.inputs[2].default_value = 5.0
+        cloudPatternNoise.inputs[3].default_value = 16.0
+        cloudPatternNoise.inputs[4].default_value = 0.720
+        cloudPatternNoise.inputs[5].default_value = 0.1
+        mat_Cloud.node_tree.links.new(textureCoordinatesC.outputs[3],cloudPatternNoise.inputs[0])
+
+        cloudPatternVoronoi: nodeType = nodesC.new("ShaderNodeTexVoronoi")
+        cloudPatternVoronoi.inputs[2].default_value = 1.9
+        mat_Cloud.node_tree.links.new(cloudPatternNoise.outputs[0],cloudPatternVoronoi.inputs[0])
+
+        cloudMixColor: nodeType = nodesC.new("ShaderNodeMixRGB")
+        cloudMixColor.inputs[2].default_value = (0,0,0,1)
+        mat_Cloud.node_tree.links.new(cloudPatternVoronoi.outputs[0],cloudMixColor.inputs[1])
+        mat_Cloud.node_tree.links.new(cloudShapeMaskRamp.outputs[0],cloudMixColor.inputs[0])
+
+        ##Cloud Material
+
+        mat_Cloud.use_screen_refraction = True
+        mat_Cloud.blend_method = 'BLEND'
+        mat_Cloud.show_transparent_back = False
+        mat_Cloud.shadow_method = 'HASHED'
+
+        cloudBSDF: nodeType = nodesC["Principled BSDF"]
+        cloudBSDF.inputs[0].default_value = input.cloudColor
+        cloudBSDF.inputs[7].default_value = 0.65
+
+        cloudBumpNoise: nodeType = nodesC.new("ShaderNodeTexNoise")
+        cloudBumpNoise.inputs[2].default_value = 45.0
+        cloudBumpNoise.inputs[3].default_value = 16.0
+        cloudBumpNoise.inputs[4].default_value = 0.397
+        mat_Cloud.node_tree.links.new(textureCoordinatesC.outputs[3],cloudBumpNoise.inputs[0])
+
+        cloudBumps: nodeType  = nodesC.new("ShaderNodeBump")
+        cloudBumps.inputs[0].default_value = 0.002 #bumpyness of clouds
+        mat_Cloud.node_tree.links.new(cloudBumpNoise.outputs[0],cloudBumps.inputs[2])
+        mat_Cloud.node_tree.links.new(cloudBumps.outputs[0],cloudBSDF.inputs[22])
+
+        transparentDSDF: nodeType = nodesC.new("ShaderNodeBsdfTransparent")
+
+        cloudMixShader: nodeType = nodesC.new("ShaderNodeMixShader")
+
+        mat_Cloud.node_tree.links.new(cloudMixColor.outputs[0],cloudMixShader.inputs[0])
+
+        mat_Cloud.node_tree.links.new(transparentDSDF.outputs[0],cloudMixShader.inputs[1])
+        mat_Cloud.node_tree.links.new(cloudBSDF.outputs[0],cloudMixShader.inputs[2])
+
+        materialOutputC: nodeType = nodesC["Material Output"]
+        # mat_Cloud.node_tree.links.new(cloudMixShader.outputs[0],materialOutputC.inputs[0])
+
+
+
+        planetAtmoMixShader: nodeType = nodesC.new("ShaderNodeMixShader")
+        mat_Cloud.node_tree.links.new(atmoMask.outputs[0],planetAtmoMixShader.inputs[0])
+        mat_Cloud.node_tree.links.new(cloudMixShader.outputs[0],planetAtmoMixShader.inputs[1])
+        mat_Cloud.node_tree.links.new(atmoBSDF.outputs[0],planetAtmoMixShader.inputs[2])
+
+
+
+        mat_Cloud.node_tree.links.new(planetAtmoMixShader.outputs[0],materialOutputC.inputs[0])
+
+    else:
+        materialOutputC: nodeType = nodesC["Material Output"]
+        planetAtmoMixShader: nodeType = nodesC.new("ShaderNodeMixShader")
+        mat_Cloud.node_tree.links.new(atmoMask.outputs[0],planetAtmoMixShader.inputs[0])
+        transparentDSDF: nodeType = nodesC.new("ShaderNodeBsdfTransparent")
+        mat_Cloud.node_tree.links.new(transparentDSDF.outputs[0],planetAtmoMixShader.inputs[1])
+        mat_Cloud.node_tree.links.new(atmoBSDF.outputs[0],planetAtmoMixShader.inputs[2])
+        mat_Cloud.node_tree.links.new(atmoBSDF.outputs[0],materialOutputC.inputs[0])
+    _atmosphere.data.materials.append(mat_Cloud)
 
 def main(context,input):
-    
-    if input.planeten_art == "GASPLANET":
-        planet = createPlanet(context,input)
+    planet = createPlanet(context,input)
+    if input.planeten_art == "GASPLANET": 
         createPlanetMaterial(input,planet,True) 
         if input.hasRing:
             ring = createRing(context,input)
             createPlanetMaterial(input,ring,False)
             createRingShape(input.innerRadius, input.outerRadius)
+    elif input.planeten_art == "GESTEINSPLANET":
+        createGesteinsPlanet(planet,input)
+        amtosphere = createAtmosphere(context,input)
+        atmospherePattern(amtosphere,True,input)
 
 class SimpleOperator(bpy.types.Operator):
     """Tooltip"""
@@ -477,9 +730,9 @@ class SimpleOperator(bpy.types.Operator):
     continentBumpyness:bpy.props.FloatProperty(
         name='continentBumpyness',
         description='how bumpy the continents are',
-        default = (0.2),
+        default = (0.06),
         min= 0,
-        max= 1,
+        max= 0.2,
         options={'SKIP_SAVE'}) 
     
     
@@ -489,24 +742,24 @@ class SimpleOperator(bpy.types.Operator):
         name='continentsScaleX',
         description='continentsScaleX',
         default = (0.6),
-        min= 0,
-        max= 1,
+        min= -1,
+        max= 4,
         options={'SKIP_SAVE'}) 
     
     continentsScaleY:bpy.props.FloatProperty(
         name='continentsScaleY',
         description='continentsScaleY',
         default = (1),
-        min= 0,
-        max= 1,
+        min= -1,
+        max= 4,
         options={'SKIP_SAVE'}) 
     
     continentsScaleZ:bpy.props.FloatProperty(
         name='continentsScaleZ',
         description='continentsScaleZ',
         default = (1),
-        min= 0,
-        max= 1,
+        min= -1.00,
+        max= 4,
         options={'SKIP_SAVE'}) 
        
     amountOfContinents:bpy.props.FloatProperty(
@@ -514,14 +767,14 @@ class SimpleOperator(bpy.types.Operator):
         description='amount of continents',
         default = (0.5),
         min= 0.01,
-        max= 1,
+        max= 10,
         options={'SKIP_SAVE'}) 
     
     
 
     continentDivision:bpy.props.FloatProperty(
-        name='continentDivision',
-        description='how much divided the continents are',
+        name='continent detail',
+        description='how much detail the continent shapes have',
         default = (0.57),
         min= 0.01,
         max= 1,
@@ -536,7 +789,17 @@ class SimpleOperator(bpy.types.Operator):
         max= 1,
         options={'SKIP_SAVE'}) 
   #ozeane
-  
+
+
+    oceanAmount:bpy.props.FloatProperty(
+        name='oceanAmount',
+        description='how much water is on the planet, 0 is a dried out planet',
+        default = (0.85),
+        min= 0.0,
+        max= 1.0,
+        options={'SKIP_SAVE'}) 
+
+
     oceanColor1:bpy.props.FloatVectorProperty(
         name='oceanColor1',
         default=(0.009,0.019,0.122,1),
@@ -564,9 +827,9 @@ class SimpleOperator(bpy.types.Operator):
         options={'SKIP_SAVE'})     
         
     wavyness:bpy.props.FloatProperty(
-        name='shoreSize',
+        name='wavyness',
         description='shoreSize - 0.0 is biggest',
-        default = (0.03),
+        default = (0.02),
         min= 0.0,
         max= 0.1,
         options={'SKIP_SAVE'})   
@@ -583,7 +846,7 @@ class SimpleOperator(bpy.types.Operator):
         name='cloudsize',
         description='cloudsize',
         default = (0.12),
-        min= 0.01,
+        min= 0.,
         max= 1,
         options={'SKIP_SAVE'})  
 
@@ -598,15 +861,15 @@ class SimpleOperator(bpy.types.Operator):
 
     atmosphereAlpha:bpy.props.FloatProperty(
         name='atmosphereAlpha',
-        description='atmosphereAlpha',
+        description='how transparent the atmosphere is',
         default = (0.3),
         min= 0.0,
-        max= 1,
+        max= 0.9,
         options={'SKIP_SAVE'})   
     
     atmoshereSize:bpy.props.FloatProperty(
         name='atmosphereAlpha',
-        description='atmosphereAlpha',
+        description='how big the border of the actual atmosphere shows',
         default = (0.05),
         min= 0.0,
         max= 0.2,
@@ -668,6 +931,7 @@ class SimpleOperator(bpy.types.Operator):
             layout.prop(self, 'continentDivision')
             layout.prop(self, 'continentHeight')
             layout.label(text='Oceans:')
+            layout.prop(self, 'oceanAmount')
             layout.prop(self, 'oceanColor1')
             layout.prop(self, 'oceanColor2')
             layout.prop(self, 'shoreSize')
