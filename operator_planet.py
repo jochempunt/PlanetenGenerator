@@ -844,7 +844,7 @@ class SimpleOperator(bpy.types.Operator):
     
     cloudsize:bpy.props.FloatProperty(
         name='cloudsize',
-        description='cloudsize',
+        description='cloudsize, 0 is no clouds at all',
         default = (0.12),
         min= 0.,
         max= 1,
@@ -868,7 +868,7 @@ class SimpleOperator(bpy.types.Operator):
         options={'SKIP_SAVE'})   
     
     atmoshereSize:bpy.props.FloatProperty(
-        name='atmosphereAlpha',
+        name='atmoshereSize',
         description='how big the border of the actual atmosphere shows',
         default = (0.05),
         min= 0.0,
