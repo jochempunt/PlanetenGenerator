@@ -1,5 +1,4 @@
 import bpy
-import bpy
 import typing
 from mathutils import *
 import math
@@ -61,8 +60,10 @@ def createPlanetMaterial(input,object, forPlanet):
     #set material Options to make planet look 'soft'
     mat_planet.use_screen_refraction = True
     mat_planet.blend_method = 'BLEND'
+    
+        
     mat_planet.show_transparent_back = False
-    mat_planet.shadow_method = 'HASHED'
+    mat_planet.shadow_method = 'NONE'
 
     #set Values in BSDF
     surfaceBSDF.inputs[15].default_value = 0.7 #transmission
@@ -70,15 +71,17 @@ def createPlanetMaterial(input,object, forPlanet):
     surfaceBSDF.inputs[5].default_value = 0.6 #specular
     
     if(forPlanet == True):
-        surfacePattern(True,input.surfaceColorOne,input.surfaceColorTwo,input.surfaceScale,input.surfaceDetail, input.mappingX, input.mappingY, input.mappingZ, nodes, mat_planet, surfaceBSDF) 
+        surfacePattern(input,True,input.surfaceColor1,input.surfaceColor2,input.surfaceScale,input.surfaceDetail, input.mappingX, input.mappingY, input.mappingZ, nodes, mat_planet, surfaceBSDF) 
         edgeTransparency(input.edgeTransparency, nodes, mat_planet, surfaceBSDF)
     else:
-        mat_planet.blend_method = 'BLEND'
-        surfacePattern(False, input.firstRingColor,input.secondRingColor,input.surfaceScaleRing, 4, 0, 1, 1, nodes, mat_planet, surfaceBSDF) 
-    
+        mat_planet.blend_method = 'HASHED'
+        if input.isHashed == False:
+            mat_planet.blend_method = 'BLEND'
+        surfacePattern(input,False, input.firstRingColor,input.secondRingColor,input.surfaceScaleRing, 4, 0, 1, 1, nodes, mat_planet, surfaceBSDF) 
+        
     object.data.materials.append(mat_planet)
 
-def surfacePattern(forPlanet, firstColor, secondColor, scale, detail, surfaceX, surfaceY, surfaceZ, nodes, mat_planet, surfaceBSDF):
+def surfacePattern(input,forPlanet, firstColor, secondColor, scale, detail, surfaceX, surfaceY, surfaceZ, nodes, mat_planet, surfaceBSDF):
 
     #create Surface Pattern with Noise Texture and ColorRamp
 
@@ -106,18 +109,33 @@ def surfacePattern(forPlanet, firstColor, secondColor, scale, detail, surfaceX, 
 
     #set positions for ColorRamp elements
     upperSurfaceLimit = 0.7
-    LowerSurfaceLimit = 0.4
 
+    LowerSurfaceLimit = 0.2
+  
     #set RGB for ColorRamp elements
     surfaceColorRamp.color_ramp.elements[0].color = firstColor
     surfaceColorRamp.color_ramp.elements[1].color = secondColor
+
+   
+    
+
     
     #link Nodes to BSDF
     if(forPlanet == True):
+        if input.numberOfColors == 1:
+            surfaceColorRamp.color_ramp.elements.remove(surfaceColorRamp.color_ramp.elements[1])
+      
+            
+
+          
         mat_planet.node_tree.links.new(surfaceColorRamp.outputs[0],surfaceBSDF.inputs[0])
         mat_planet.node_tree.links.new(surfaceNoise.outputs[0],surfaceColorRamp.inputs[0])
         mat_planet.node_tree.links.new(surfaceMapping.outputs[0],surfaceNoise.inputs[0])
         mat_planet.node_tree.links.new(textureCoordinates.outputs[3],surfaceMapping.inputs[0])
+        surfaceColorRamp.color_ramp.elements[0].position = upperSurfaceLimit
+        if input.numberOfColors > 1:
+            surfaceColorRamp.color_ramp.elements[1].position = LowerSurfaceLimit
+       
     else:
         #create additional colorRamp for ring
         ringSurfaceColorRamp: nodeType = nodes.new("ShaderNodeValToRGB")
@@ -145,9 +163,9 @@ def surfacePattern(forPlanet, firstColor, secondColor, scale, detail, surfaceX, 
         mat_planet.node_tree.links.new(ringSurfaceColorRamp.outputs[0],surfaceBSDF.inputs[0])
         mat_planet.node_tree.links.new(surfaceColorRamp.outputs[0],surfaceBSDF.inputs[17])
         mat_planet.node_tree.links.new(surfaceColorRamp.outputs[0],surfaceBSDF.inputs[21])
-        
-    surfaceColorRamp.color_ramp.elements[0].position = upperSurfaceLimit
-    surfaceColorRamp.color_ramp.elements[1].position = LowerSurfaceLimit
+        surfaceColorRamp.color_ramp.elements[0].position = upperSurfaceLimit
+        surfaceColorRamp.color_ramp.elements[1].position = LowerSurfaceLimit
+   
 
 #make edges transparent - Gas planet
 def edgeTransparency(diff, nodes, mat_planet, surfaceBSDF):
@@ -194,7 +212,7 @@ def angle_between_vector_and_ground_plane(vector):
 
 
 
-def createRingShape(innerRadius,outerRadius):
+def createRingShape(thickness,size):
 
 
     bpy.ops.object.editmode_toggle() 
@@ -222,7 +240,7 @@ def createRingShape(innerRadius,outerRadius):
             if z_pos != 0:
                 edge.select = True
                 
-    bpy.ops.transform.resize(value=(innerRadius, innerRadius, innerRadius))
+    bpy.ops.transform.resize(value=(thickness, thickness, thickness))
 
     bpy.ops.mesh.select_all(action = 'DESELECT')
     lower_Edges= []
@@ -233,7 +251,7 @@ def createRingShape(innerRadius,outerRadius):
             if z_pos <= 0:
                 edge.select = True   
                 lower_Edges.append(edge)  
-    bpy.ops.transform.resize(value=(outerRadius, outerRadius, outerRadius))       
+    bpy.ops.transform.resize(value=(size, size, size))       
 
     for edge in lower_Edges:
         edge.verts[0].co.z = 0
@@ -497,7 +515,7 @@ def main(context,input):
         if input.hasRing:
             ring = createRing(context,input)
             createPlanetMaterial(input,ring,False)
-            createRingShape(input.innerRadius, input.outerRadius)
+            createRingShape(input.thickness, input.ringSize)
     elif input.planeten_art == "GESTEINSPLANET":
         createGesteinsPlanet(planet,input)
         amtosphere = createAtmosphere(context,input)
@@ -588,7 +606,7 @@ class SimpleOperator(bpy.types.Operator):
         max= 5,
         options={'SKIP_SAVE'})
     
-    surfaceColorOne: bpy.props.FloatVectorProperty(
+    surfaceColor1: bpy.props.FloatVectorProperty(
         name='surfaceColor 1',
         default=(1,0.35,0.1,1),
         min=0.0, max=1.0,
@@ -597,7 +615,7 @@ class SimpleOperator(bpy.types.Operator):
         options={'SKIP_SAVE'}
     )
     
-    surfaceColorTwo: bpy.props.FloatVectorProperty(
+    surfaceColor2: bpy.props.FloatVectorProperty(
         name='surfaceColor 2',
         default=(0.4, 0.3, 0.07,1),
         min=0.0, max=1.0,
@@ -605,6 +623,8 @@ class SimpleOperator(bpy.types.Operator):
         size=4,
         options={'SKIP_SAVE'}
     )
+    
+   
     
     #ring variables
     hasRing: bpy.props.BoolProperty(
@@ -614,17 +634,17 @@ class SimpleOperator(bpy.types.Operator):
     
     
     
-    innerRadius:bpy.props.FloatProperty(
-        name='innerRadius',
-        description='inner radius of the ring',
+    thickness:bpy.props.FloatProperty(
+        name='thickness',
+        description='how thick the width of the ring is',
         default = (0.7),
         min= 0.01,
         max= 5,
         options={'SKIP_SAVE'})
         
-    outerRadius:bpy.props.FloatProperty(
-        name='outerRadius',
-        description='outer radius of the ring',
+    ringSize:bpy.props.FloatProperty(
+        name='ringSize',
+        description='impacts the total size of the ring',
         default = (1.2),
         min= 0.01,
         max= 5,
@@ -659,6 +679,13 @@ class SimpleOperator(bpy.types.Operator):
         default = (105),
         min= 1,
         max= 300,
+        options={'SKIP_SAVE'})
+        
+        
+        
+    isHashed: bpy.props.BoolProperty(
+        name='isHashed',     
+        default=True,
         options={'SKIP_SAVE'})
         
     edgeTransparency:bpy.props.FloatProperty(
@@ -697,6 +724,16 @@ class SimpleOperator(bpy.types.Operator):
         min= 1,
         max= 20,
         options={'SKIP_SAVE'}) 
+        
+    numberOfColors:bpy.props.IntProperty(
+        name='numberOfColors',
+        description='amount of colors used',
+        default = (2),
+        min= 1,
+        max= 2,
+        options={'SKIP_SAVE'}) 
+    
+ 
     
     earthColor1:bpy.props.FloatVectorProperty(
         name='earthColor1',
@@ -902,16 +939,19 @@ class SimpleOperator(bpy.types.Operator):
             layout.prop(self, 'mappingZ')
             layout.prop(self, 'surfaceDetail')
             layout.prop(self, 'surfaceScale')
-            layout.prop(self, 'surfaceColorOne')
-            layout.prop(self, 'surfaceColorTwo')
+            layout.prop(self, 'numberOfColors')
+            for i  in range (self.numberOfColors):
+                  layout.prop(self, 'surfaceColor'+ str(i+1))
             layout.label(text='Ring Settings:')
             layout.prop(self, 'hasRing')
             if self.hasRing:
-                layout.prop(self,'innerRadius')
-                layout.prop(self,'outerRadius')
+                layout.prop(self,'thickness')
+                layout.prop(self,'ringSize')
                 layout.prop(self,'firstRingColor')
                 layout.prop(self,'secondRingColor')
                 layout.prop(self,'surfaceScaleRing')
+                layout.prop(self,'isHashed')
+                
             layout.label(text='Edge Settings:')
             layout.prop(self, 'edgeTransparency')
         elif self.planeten_art == "GESTEINSPLANET":
