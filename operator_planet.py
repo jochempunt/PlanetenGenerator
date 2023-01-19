@@ -211,7 +211,6 @@ def angle_between_vector_and_ground_plane(vector):
 
 
 
-
 def createRingShape(thickness,size):
 
     bpy.ops.object.editmode_toggle() 
@@ -227,33 +226,29 @@ def createRingShape(thickness,size):
         else:
             face.select = True
     faces_select = [f for f in bm.faces if f.select] 
-    bmesh.ops.delete(bm, geom=faces_select, context="FACES")  
-
+    bmesh.ops.delete(bm, geom=faces_select, context="FACES") 
     bpy.ops.mesh.select_all(action = 'DESELECT')
-
-    for edge in bm.edges:
-        if edge.is_boundary:
-            # Calculate the average Z position of the edge vertices
-            z_pos = (edge.verts[0].co.z + edge.verts[1].co.z) / 2
-            if z_pos != 0:
-                edge.select = True             
-    bpy.ops.transform.resize(value=(thickness, thickness, 0))
     
-    lower_Edges= []
+    for upper_edge in bm.edges:
+        if upper_edge.is_boundary:
+            # Calculate the average Z position of the edge vertices
+            z_pos = (upper_edge.verts[0].co.z + upper_edge.verts[1].co.z) / 2
+            if z_pos == 0:
+                upper_edge.select = True             
+    bpy.ops.transform.resize(value=(thickness, thickness, 0))
+
     for edge in bm.edges:
         if edge.is_boundary:
             z_pos = (edge.verts[0].co.z + edge.verts[1].co.z) / 2
             if z_pos <= 0:
-                edge.select = True   
-                lower_Edges.append(edge)  
+                edge.select = True
+                edge.verts[0].co.z = 0
+                edge.verts[1].co.z = 0   
+                
     bpy.ops.transform.resize(value=(size, size, 0))       
-    for edge in lower_Edges:
-        edge.verts[0].co.z = 0
-        edge.verts[1].co.z = 0
-
     bmesh.update_edit_mesh(ringMesh)
     ringMesh.update()
-    bpy.ops.object.editmode_toggle()
+    bpy.ops.object.editmode_toggle() 
 
 
 #gesteinsplanet
