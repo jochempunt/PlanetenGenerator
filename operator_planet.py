@@ -229,6 +229,8 @@ def createRingShape(thickness,size):
     faces_select = [f for f in bm.faces if f.select] 
     bmesh.ops.delete(bm, geom=faces_select, context="FACES")  
 
+    bpy.ops.mesh.select_all(action = 'DESELECT')
+
     for edge in bm.edges:
         if edge.is_boundary:
             # Calculate the average Z position of the edge vertices
