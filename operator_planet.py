@@ -214,12 +214,10 @@ def angle_between_vector_and_ground_plane(vector):
 
 def createRingShape(thickness,size):
 
-
     bpy.ops.object.editmode_toggle() 
     ring = bpy.context.edit_object
     ringMesh = ring.data
     bm = bmesh.from_edit_mesh(ringMesh)
-
     bpy.ops.mesh.select_all(action = 'DESELECT')
 
     for face in bm.faces:
@@ -231,33 +229,25 @@ def createRingShape(thickness,size):
     faces_select = [f for f in bm.faces if f.select] 
     bmesh.ops.delete(bm, geom=faces_select, context="FACES")  
 
-    bpy.ops.mesh.select_all(action = 'DESELECT')
-
     for edge in bm.edges:
         if edge.is_boundary:
             # Calculate the average Z position of the edge vertices
             z_pos = (edge.verts[0].co.z + edge.verts[1].co.z) / 2
             if z_pos != 0:
-                edge.select = True
-                
-    bpy.ops.transform.resize(value=(thickness, thickness, thickness))
-
-    bpy.ops.mesh.select_all(action = 'DESELECT')
+                edge.select = True             
+    bpy.ops.transform.resize(value=(thickness, thickness, 0))
+    
     lower_Edges= []
     for edge in bm.edges:
         if edge.is_boundary:
-        
             z_pos = (edge.verts[0].co.z + edge.verts[1].co.z) / 2
             if z_pos <= 0:
                 edge.select = True   
                 lower_Edges.append(edge)  
-    bpy.ops.transform.resize(value=(size, size, size))       
-
+    bpy.ops.transform.resize(value=(size, size, 0))       
     for edge in lower_Edges:
         edge.verts[0].co.z = 0
         edge.verts[1].co.z = 0
-
-
 
     bmesh.update_edit_mesh(ringMesh)
     ringMesh.update()
@@ -521,10 +511,10 @@ def main(context,input):
         amtosphere = createAtmosphere(context,input)
         atmospherePattern(amtosphere,True,input)
 
-class SimpleOperator(bpy.types.Operator):
+class PlanetenGenerator(bpy.types.Operator):
     """Tooltip"""
-    bl_idname = "object.simple_operator"
-    bl_label = "Simple Object Operator"
+    bl_idname = "object.planeten_generator"
+    bl_label = "Planeten-Generator"
     bl_options = {"REGISTER", "UNDO"}
 
   
@@ -992,19 +982,19 @@ class SimpleOperator(bpy.types.Operator):
             
 
 def menu_func(self, context):
-    self.layout.operator(SimpleOperator.bl_idname, text=SimpleOperator.bl_label)
+    self.layout.operator(PlanetenGenerator.bl_idname, text=PlanetenGenerator.bl_label)
 
 
 
 
 # Register and add to the "object" menu (required to also use F3 search "Simple Object Operator" for quick access).
 def register():
-    bpy.utils.register_class(SimpleOperator)
+    bpy.utils.register_class(PlanetenGenerator)
     bpy.types.VIEW3D_MT_add.append(menu_func)
 
 
 def unregister():
-    bpy.utils.unregister_class(SimpleOperator)
+    bpy.utils.unregister_class(PlanetenGenerator)
     bpy.types.VIEW3D_MT_add.remove(menu_func)
 
 
