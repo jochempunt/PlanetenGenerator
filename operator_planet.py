@@ -838,7 +838,7 @@ class PlanetenGenerator(bpy.types.Operator):
     )   
   
     oceanColor2:bpy.props.FloatVectorProperty(
-        name='oceanColor1',
+        name='oceanColor2',
         default=(0.047,0.136,0.384,1),
         min=0.0, max=1.0,
         subtype='COLOR',
