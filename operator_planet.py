@@ -138,7 +138,12 @@ def surfacePattern(input,forPlanet, firstColor, secondColor, scale, detail, surf
        
     else:
         #create additional colorRamp for ring
+        
         ringSurfaceColorRamp: nodeType = nodes.new("ShaderNodeValToRGB")
+        
+        surfaceColorRamp.color_ramp.elements[0].color = (1, 1, 1, 1)
+        surfaceColorRamp.color_ramp.elements[1].color = (0, 0, 0, 1)
+        
         
         ringSurfaceColorRamp.color_ramp.elements[0].color = firstColor
         ringSurfaceColorRamp.color_ramp.elements[1].color = secondColor
@@ -152,7 +157,7 @@ def surfacePattern(input,forPlanet, firstColor, secondColor, scale, detail, surf
         surfaceNoise.inputs[5].default_value = 0
         
         #set positions for ColorRamp elements for The Ring
-        upperSurfaceLimit = 0.6
+        upperSurfaceLimit = 0.8
         LowerSurfaceLimit = 0.4
         
         #link Nodes to BSDF for Ring
@@ -161,7 +166,6 @@ def surfacePattern(input,forPlanet, firstColor, secondColor, scale, detail, surf
         mat_planet.node_tree.links.new(surfaceNoise.outputs[0],surfaceColorRamp.inputs[0])
         mat_planet.node_tree.links.new(surfaceNoise.outputs[0],ringSurfaceColorRamp.inputs[0])
         mat_planet.node_tree.links.new(ringSurfaceColorRamp.outputs[0],surfaceBSDF.inputs[0])
-        mat_planet.node_tree.links.new(surfaceColorRamp.outputs[0],surfaceBSDF.inputs[17])
         mat_planet.node_tree.links.new(surfaceColorRamp.outputs[0],surfaceBSDF.inputs[21])
         surfaceColorRamp.color_ramp.elements[0].position = upperSurfaceLimit
         surfaceColorRamp.color_ramp.elements[1].position = LowerSurfaceLimit
