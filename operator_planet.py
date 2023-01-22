@@ -12,14 +12,14 @@ nodeType = bpy.types.Node;
 
 
 
-
 def createPlanet(context,input):
     nodeType = bpy.types.Node
 
     #create planet sphere
     bpy.ops.mesh.primitive_uv_sphere_add(radius =1, enter_editmode=False, align='WORLD', location=(0, 0, 0), scale=(1, 1, 1))
-    ball = C.object
-
+    #ball = C.object
+    ball =bpy.context.object
+    ball.name = "Planet"
     bpy.ops.object.modifier_add(type='SUBSURF')
     bpy.context.object.modifiers["Subdivision"].levels = input.levels
     bpy.context.object.modifiers["Subdivision"].render_levels = input.renderLevels
@@ -29,6 +29,7 @@ def createPlanet(context,input):
 def createAtmosphere(context,input):
     bpy.ops.mesh.primitive_uv_sphere_add(radius =1.02, enter_editmode=False, align='WORLD', location=(0, 0, 0), scale=(1, 1, 1))
     atmos = C.object
+    atmos.name = "Atmosphere"
     bpy.ops.object.modifier_add(type='SUBSURF')
     bpy.context.object.modifiers["Subdivision"].levels = input.levels
     bpy.context.object.modifiers["Subdivision"].render_levels = input.renderLevels
@@ -36,11 +37,13 @@ def createAtmosphere(context,input):
     return atmos
 
 def createRing(context,input):
-    C.object.select_set(False)
+    #C.object.select_set(False)
+    bpy.context.object.select_set(False)
+    
     #create ring
     bpy.ops.mesh.primitive_uv_sphere_add(radius =2, enter_editmode=False, align='WORLD', location=(0, 0, 0), scale=(1, 1, 1))
     ring = C.object
-
+    ring.name = "Ring"
 
     bpy.ops.object.modifier_add(type='SUBSURF')
     bpy.context.object.modifiers["Subdivision"].levels = input.levels
@@ -499,34 +502,46 @@ def atmospherePattern(_atmosphere,_clouds,input):
         mat_Cloud.node_tree.links.new(atmoBSDF.outputs[0],materialOutputC.inputs[0])
     _atmosphere.data.materials.append(mat_Cloud)
 
-def main(context,input):
-    planet = createPlanet(context,input)
-    if input.planeten_art == "GASPLANET": 
-        createPlanetMaterial(input,planet,True) 
-        if input.hasRing:
-            ring = createRing(context,input)
-            createPlanetMaterial(input,ring,False)
-            createRingShape(input.thickness, input.ringSize)
-    elif input.planeten_art == "GESTEINSPLANET":
-        createGesteinsPlanet(planet,input)
-        amtosphere = createAtmosphere(context,input)
-        atmospherePattern(amtosphere,True,input)
+
+bl_info = {
+    "name": "Planeten Generator",
+    "author": "<ich@webmail.hs-furtwangen.de>",
+    "version": (1, 0),
+    "blender": (3, 3, 1),
+    "location": "View3D > Add",
+    "description": "Addon um Planeten zu Generieren",
+    "category": "Add",
+    "support": "TESTING",
+}
 
 class PlanetenGenerator(bpy.types.Operator):
     """Tooltip"""
     bl_idname = "object.planeten_generator"
     bl_label = "Planeten-Generator"
     bl_options = {"REGISTER", "UNDO"}
-
-  
+    
    
-
+    def main(context,input):
+        planet = createPlanet(context,input)
+        if input.planeten_art == "GASPLANET": 
+            createPlanetMaterial(input,planet,True) 
+            if input.hasRing:
+                ring = createRing(context,input)
+                ring.parent = planet
+                createPlanetMaterial(input,ring,False)
+                createRingShape(input.thickness, input.ringSize)
+        elif input.planeten_art == "GESTEINSPLANET":
+            createGesteinsPlanet(planet,input)
+            atmosphere = createAtmosphere(context,input)
+            atmosphere.parent = planet
+            atmospherePattern(atmosphere,True,input)
 
     def execute(self, context):
-        main(context,self)
+        PlanetenGenerator.main(context,self)
         
         return {'FINISHED'}
-    
+
+
 
     planeten_art: bpy.props.EnumProperty(
         name="Art",
@@ -536,8 +551,6 @@ class PlanetenGenerator(bpy.types.Operator):
                ],
         default="GASPLANET"
     )
-
-
 
 
     #Subdivision Settings    
