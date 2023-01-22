@@ -505,9 +505,9 @@ def atmospherePattern(_atmosphere,_clouds,input):
 
 bl_info = {
     "name": "Planeten Generator",
-    "author": "<ich@webmail.hs-furtwangen.de>",
+    "author": "jochem.punt@hs-furtwangen.de; nic.rubner@hs-furtwangen.de",
     "version": (1, 0),
-    "blender": (3, 3, 1),
+    "blender": (3, 4, 1),
     "location": "View3D > Add",
     "description": "Addon um Planeten zu Generieren",
     "category": "Add",
