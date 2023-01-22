@@ -28,7 +28,7 @@ def createPlanet(context,input):
 
 def createAtmosphere(context,input):
     bpy.ops.mesh.primitive_uv_sphere_add(radius =1.02, enter_editmode=False, align='WORLD', location=(0, 0, 0), scale=(1, 1, 1))
-    atmos = C.object
+    atmos = bpy.context.object
     atmos.name = "Atmosphere"
     bpy.ops.object.modifier_add(type='SUBSURF')
     bpy.context.object.modifiers["Subdivision"].levels = input.levels
@@ -42,7 +42,7 @@ def createRing(context,input):
     
     #create ring
     bpy.ops.mesh.primitive_uv_sphere_add(radius =2, enter_editmode=False, align='WORLD', location=(0, 0, 0), scale=(1, 1, 1))
-    ring = C.object
+    ring = bpy.context.object
     ring.name = "Ring"
 
     bpy.ops.object.modifier_add(type='SUBSURF')
