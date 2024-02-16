@@ -362,6 +362,9 @@ def createGesteinsPlanet(_planet,input):
     oceanBSDF.inputs[7].default_value = 0.595
 
 
+ 
+    
+
     #Waves for the ocean
     wavesNoise: nodeType = nodes.new("ShaderNodeTexNoise")
     wavesNoise.inputs[2].default_value= 70.0
@@ -504,20 +507,20 @@ def atmospherePattern(_atmosphere,_clouds,input):
 
 
 bl_info = {
-    "name": "Planeten Generator",
-    "author": "jochem.punt@hs-furtwangen.de; nic.rubner@hs-furtwangen.de",
-    "version": (1, 0),
+    "name": "Planet Generator",
+    "author": "jochem punt, nic rubner",
+    "version": (1, 1),
     "blender": (3, 4, 1),
     "location": "View3D > Add",
-    "description": "Addon um Planeten zu Generieren",
+    "description": "Addon to easily generate and modify Planets",
     "category": "Add",
     "support": "TESTING",
 }
 
 class PlanetenGenerator(bpy.types.Operator):
     """Tooltip"""
-    bl_idname = "object.planeten_generator"
-    bl_label = "Planeten-Generator"
+    bl_idname = "object.planet_generator"
+    bl_label = "Planet-Generator"
     bl_options = {"REGISTER", "UNDO"}
     
    
@@ -544,10 +547,10 @@ class PlanetenGenerator(bpy.types.Operator):
 
 
     planeten_art: bpy.props.EnumProperty(
-        name="Art",
+        name="Planet Type",
         description="Choose one of the options",
-        items=[("GASPLANET", "Gasplanet ", ""),
-               ("GESTEINSPLANET", "Gesteinsplanet", "")
+        items=[("GASPLANET", "Gas Planet ", ""),
+               ("GESTEINSPLANET", "Terrestial Planet", "")
                ],
         default="GASPLANET"
     )
