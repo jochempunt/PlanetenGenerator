@@ -11,8 +11,10 @@ After installing the addon, a new entry appears under `Add > Planet-Generator`. 
 ### Supported Planet Types
 
 - **Gas Planet**: Smooth surface with optional rings and an atmospheric glow at the edges.
-- **Rocky Planet** (Gesteinsplanet): Procedural continents, oceans, and optionally clouds and atmosphere.
+![gasPlanet](https://github.com/jochempunt/PlanetenGenerator/blob/main/gas_planet.jpg?raw=true)
 
+- **Rocky Planet** (Gesteinsplanet): Procedural continents, oceans, and optionally clouds and atmosphere.
+![terrestrialPlanet](https://github.com/jochempunt/PlanetenGenerator/blob/main/terrestrial_planet.jpg?raw=true)
 ---
 
 ## Parameters
