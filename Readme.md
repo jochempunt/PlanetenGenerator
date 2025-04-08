@@ -15,7 +15,7 @@ After installing the addon, a new entry appears under `Add > Planet-Generator`. 
 
 - **Rocky Planet** (Gesteinsplanet): Procedural continents, oceans, and optionally clouds and atmosphere.
 ![terrestrialPlanet](https://github.com/jochempunt/PlanetenGenerator/blob/main/terrestrial_planet.jpg?raw=true)
----
+
 
 ## Parameters
 
