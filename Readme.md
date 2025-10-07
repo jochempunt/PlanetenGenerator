@@ -2,6 +2,17 @@
 
 This is a Blender plugin written in Python using `bpy`. It adds an operator that lets you generate customizable planets directly in the 3D Viewport. The tool was created for a university project and supports two main types of planets: **Gas Giants** and **Terrestrial Planets**.
 
+
+---
+## How to Install
+
+1. Open Blender 3.1.1 or newer  
+2. Go to `Edit > Preferences > Add-ons > Install`  
+3. Select `operator_planet.py`  
+4. Enable the addon  
+5. Use it from the `Add > Planet-Generator` menu in the 3D View
+
+
 ---
 
 ## Overview
@@ -36,16 +47,6 @@ Each planet type comes with its own set of customizable options:
 
 ---
 
-## How to Install
-
-1. Open Blender 3.1.1 or newer  
-2. Go to `Edit > Preferences > Add-ons > Install`  
-3. Select `operator_planet.py`  
-4. Enable the addon  
-5. Use it from the `Add > Planet-Generator` menu in the 3D View
-
----
-
 ## Files
 
 - `operator_planet.py` – main addon script  
@@ -54,3 +55,4 @@ Each planet type comes with its own set of customizable options:
 ## Notes
 
 Created for educational use. Works with Blender 3.1.1 and probably newer versions too. All materials are generated procedurally with node trees.
+
