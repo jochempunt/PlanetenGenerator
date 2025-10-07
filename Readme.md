@@ -6,7 +6,7 @@ This is a Blender plugin written in Python using `bpy`. It adds an operator that
 ---
 ## How to Install
 
-1. Open Blender 3.1.1 or newer  
+1. Open Blender 3.1.1 or 3.1.X [not 100% sure about newer versions]
 2. Go to `Edit > Preferences > Add-ons > Install`  
 3. Select `operator_planet.py`  
 4. Enable the addon  
@@ -55,4 +55,5 @@ Each planet type comes with its own set of customizable options:
 ## Notes
 
 Created for educational use. Works with Blender 3.1.1 and probably newer versions too. All materials are generated procedurally with node trees.
+
 
